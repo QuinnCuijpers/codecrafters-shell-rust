@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
 
-use anyhow::{Context};
+use anyhow::{Context, Ok};
 
 fn main() -> anyhow::Result<()> {
     // TODO: Uncomment the code below to pass the first stage
@@ -11,6 +11,10 @@ fn main() -> anyhow::Result<()> {
         let mut buf = String::new();
         let _input = io::stdin().read_line(&mut buf).context("reading stdin")?;
         let command = buf.trim_end();
+        if command == "exit" {
+            break;  
+        }
         println!("{command}: command not found");
     }
+    Ok(())
 }
