@@ -13,8 +13,17 @@ fn main() -> anyhow::Result<()> {
         let command = buf.trim_end();
         if command == "exit" {
             break;  
+        } 
+        let command_list: Vec<_> = command.split(" ").collect();
+        match command_list[0] {
+            "echo" => invoke_echo(&command_list[1..]),
+            _ => println!("{command}: command not found"),
         }
-        println!("{command}: command not found");
     }
     Ok(())
+}
+
+fn invoke_echo(cmd_list: &[&str]) {
+    let out = cmd_list.join(" ");
+    println!("{out}");
 }
