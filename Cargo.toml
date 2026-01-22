@@ -8,4 +8,5 @@ rust-version = "1.91"
 [dependencies]
 anyhow = "1.0.100"                                # error handling
 bytes = "1.11.0"                                  # helps manage buffers
+faccess = "0.2.4"
 thiserror = "2.0.18"                             # error handling
