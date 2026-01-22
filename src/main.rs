@@ -45,8 +45,8 @@ fn main() -> anyhow::Result<()> {
             };
             let exec = command_list[0];
             if let Some(_) = find_exec_file(exec, env_path) {
-                let output = Command::new(exec).args(&command_list[1..]).output()?;
-                io::stdout().write_all(&output.stdout)?;
+                let mut output = Command::new(exec).args(&command_list[1..]).spawn()?;
+                output.wait()?;
                 continue;
             }
             println!("{input}: command not found")
