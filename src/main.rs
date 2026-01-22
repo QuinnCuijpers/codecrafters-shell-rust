@@ -73,7 +73,8 @@ fn parse_input(input: &str) -> Result<Vec<String>> {
     let mut buf = String::new();
     let mut in_single_quotes = false;
     let mut in_double_quotes = false;
-    for c in input.chars() {
+    let mut chars = input.chars();
+    while let Some(c) = chars.next() {
         match c {
             ' ' => {
                 if in_single_quotes || in_double_quotes {
@@ -84,6 +85,11 @@ fn parse_input(input: &str) -> Result<Vec<String>> {
                     }
                     command_list.push(buf.clone());
                     buf.clear();
+                }
+            }
+            '\\' => if !in_single_quotes && !in_double_quotes {
+                if let Some(next_char) = chars.next() {
+                    buf.push(next_char)
                 }
             }
             '\'' => {
