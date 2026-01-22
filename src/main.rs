@@ -1,11 +1,11 @@
-use anyhow::{Context, anyhow};
+use anyhow::{Context, Result, anyhow};
 use faccess::PathExt;
 #[allow(unused_imports)]
 use std::io::{self, Write};
 use std::{
     env::{current_dir, set_current_dir},
     path::PathBuf,
-    process::Command,
+    process::{Command},
     str::FromStr,
 };
 
@@ -39,30 +39,11 @@ fn main() -> anyhow::Result<()> {
         io::stdout().flush().context("flushing stdout")?;
         let mut buf = String::new();
         let _ = io::stdin().read_line(&mut buf).context("reading stdin")?;
-        let mut input = buf.trim_end();
-        let mut command_list = vec![];
-
-        while let Some((s1, mut s2)) = input.split_once(" ") {
-            if !s1.starts_with("\"") {
-                command_list.push(s1.to_string());
-                input = s2;
-                continue;
-            }
-            if let Some(idx) = s2.find("\"") {
-                let mut combined = s1.to_string();
-                combined.push(' ');
-                combined.push_str(&s2[..idx + 1]);
-                s2 = &s2[idx + 1..];
-                command_list.push(combined);
-                input = s2;
-            } else {
-                return Err(anyhow::anyhow!("unclosed qoutes for {s1}"));
-            }
-        }
-        // all input that can no longer be split on space is still added to the command list
-        if !input.is_empty() {
-            command_list.push(input.to_string());
-        }
+        let input = buf.trim_end();
+        let Ok(command_list) = parse_input(input) else {
+            continue;
+        };
+        println!("{:?}", command_list);
 
         if let Ok(command) = Builtin::from_str(&command_list[0]) {
             match command {
@@ -73,7 +54,6 @@ fn main() -> anyhow::Result<()> {
                 Builtin::Cd => invoke_cd(&command_list[1..]),
             }
         } else {
-            // TODO: add support for executing files
             let Some(env_path) = std::env::var_os("PATH") else {
                 panic!("PATH env var not set");
             };
@@ -87,6 +67,40 @@ fn main() -> anyhow::Result<()> {
         }
     }
     anyhow::Ok(())
+}
+
+fn parse_input(input: &str) -> Result<Vec<String>> {
+    let mut command_list = vec![];
+    let mut buf = String::new();
+    let mut in_quote = false;
+    for c in input.chars() {
+        match c {
+            ' ' => {
+                if in_quote {
+                    buf.push(c);
+                } else {
+                    if buf.is_empty() {
+                        continue;
+                    }
+                    command_list.push(buf.clone());
+                    buf.clear();
+                }
+            }
+            '\'' => {
+                if in_quote {
+                    in_quote = false;
+                } else {
+                    in_quote = true;
+                }
+            }
+            _ => buf.push(c),
+        }
+    }
+    if !buf.is_empty() {
+        command_list.push(buf.clone());
+    }
+    // all input that can no longer be split on space is still added to the command list
+    Ok(command_list)
 }
 
 fn invoke_echo(cmd_list: &[String]) {
