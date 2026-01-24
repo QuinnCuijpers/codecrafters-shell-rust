@@ -99,7 +99,7 @@ where
     let mut iter = token_iter.into_iter();
     match iter.next() {
         None => println!("{builtin_out}"),
-        Some(Token::Pipe(_c)) => {
+        Some(Token::Pipe(c)) => {
             if let Some(Token::Arg(file_name)) = iter.next() {
                 let file_path = PathBuf::from(file_name);
                 if let Some(parent_dir) = file_path.parent()
@@ -108,6 +108,12 @@ where
                     eprintln!("Failed to create dirs required for {}", file_path.display());
                     return;
                 };
+
+                if c != ">" && c != "1>" {
+                    File::create(&file_path).expect("unable to create file");
+                    println!("{builtin_out}");
+                    return;
+                }
 
                 // when writing to files linux adds a newline character at the end
                 builtin_out.push('\n');
@@ -136,14 +142,23 @@ where
             let mut child = command.spawn()?;
             child.wait()?;
         }
-        Some(Token::Pipe(_c)) => {
+        Some(Token::Pipe(c)) => {
             if let Some(Token::Arg(file_name)) = iter.next() {
                 let file_path = PathBuf::from(file_name);
                 if let Some(parent_dir) = file_path.parent() {
                     std::fs::create_dir_all(parent_dir)?;
                 }
                 let file = File::create(file_path)?;
-                command.stdout(Stdio::from(file));
+                match c.as_str() {
+                    ">" | "1>" => {
+                        command.stdout(Stdio::from(file));
+                    }
+                    "2>" => {
+                        command.stderr(Stdio::from(file));
+                    }
+                    _ => unreachable!("Unknown pipe operator"),
+                }
+
                 let mut child = command.spawn()?;
                 child.wait()?;
             } else {
@@ -227,7 +242,7 @@ fn tokenize_input(input: Vec<String>) -> Option<Vec<Token>> {
 
     for s in iter {
         match s.as_str() {
-            ">" | "1>" => tokenized.push(Token::Pipe(s)),
+            ">" | "1>" | "2>" => tokenized.push(Token::Pipe(s)),
             _ => tokenized.push(Token::Arg(s)),
         }
     }
