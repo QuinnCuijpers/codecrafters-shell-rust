@@ -4,10 +4,19 @@ use faccess::PathExt;
 use std::io::{self, Write};
 use std::{
     env::{current_dir, set_current_dir},
+    ffi::OsStr,
+    fs::File,
     path::PathBuf,
-    process::Command,
+    process::{Command, Stdio},
     str::FromStr,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Token {
+    Command(String),
+    Pipe(String),
+    Arg(String),
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Builtin {
@@ -44,32 +53,105 @@ fn main() -> anyhow::Result<()> {
             continue;
         };
 
-        if let Ok(command) = Builtin::from_str(&command_list[0]) {
-            match command {
-                Builtin::Echo => invoke_echo(&command_list[1..]),
+        let Some(tokens) = tokenize_input(command_list) else {
+            continue;
+        };
+        let mut token_iter = tokens.iter().peekable();
+
+        let command = token_iter.next().unwrap();
+
+        let Token::Command(s) = command else {
+            // first string should always be a command
+            continue;
+        };
+
+        let mut args = vec![];
+        while let Some(Token::Arg(s)) = token_iter.peek() {
+            args.push(s);
+            token_iter.next();
+        }
+
+        if let Ok(builtin) = Builtin::from_str(s.as_str()) {
+            let builtin_out = match builtin {
+                Builtin::Echo => Some(invoke_echo(args)),
                 Builtin::Exit => break,
-                Builtin::Tipe => invoke_type(&command_list[1..]),
-                Builtin::Pwd => invoke_pwd(&command_list[1..]),
-                Builtin::Cd => invoke_cd(&command_list[1..]),
-            }
-        } else {
-            let Some(env_path) = std::env::var_os("PATH") else {
-                panic!("PATH env var not set");
+                Builtin::Tipe => Some(invoke_type(args)),
+                Builtin::Pwd => Some(invoke_pwd(args)?),
+                Builtin::Cd => invoke_cd(args),
             };
-            let exec = &command_list[0];
-            if find_exec_file(exec, env_path).is_some() {
-                let mut output = Command::new(exec).args(&command_list[1..]).spawn()?;
-                output.wait()?;
-                continue;
-            }
-            println!("{input}: command not found")
+            handle_builtin(builtin_out, token_iter);
+        } else if find_exec_file(s).is_some() {
+            handle_external_exec(s, args, token_iter)?;
+        } else {
+            println!("{s}: command not found")
         }
     }
     anyhow::Ok(())
 }
 
+fn handle_builtin<'a, I>(builtin_out: Option<String>, token_iter: I)
+where
+    I: IntoIterator<Item = &'a Token>,
+{
+    let Some(builtin_out) = builtin_out else {
+        return;
+    };
+    let mut iter = token_iter.into_iter();
+    match iter.next() {
+        None => println!("{builtin_out}"),
+        Some(Token::Pipe(_c)) => {
+            if let Some(Token::Arg(file_name)) = iter.next() {
+                let file_path = PathBuf::from(file_name);
+                if let Some(parent_dir) = file_path.parent()
+                    && std::fs::create_dir_all(parent_dir).is_err()
+                {
+                    eprintln!("Failed to create dirs required for {}", file_path.display());
+                    return;
+                };
+
+                std::fs::write(file_name, builtin_out)
+                    .expect("can only fail if parent dir doesn't exist");
+            } else {
+                eprintln! {"expected file name after redirection"};
+            };
+        }
+        Some(t) => eprintln!("found: {:?}", t),
+    }
+}
+
+fn handle_external_exec<'a, S, I, J>(s: &str, args: J, token_iter: I) -> Result<()>
+where
+    I: IntoIterator<Item = &'a Token>,
+    J: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let mut iter = token_iter.into_iter();
+    let mut command = Command::new(s);
+    command.args(args);
+    match iter.next() {
+        None => {
+            let mut child = command.spawn()?;
+            child.wait()?;
+        }
+        Some(Token::Pipe(_c)) => {
+            if let Some(Token::Arg(file_name)) = iter.next() {
+                let file_path = PathBuf::from(file_name);
+                if let Some(parent_dir) = file_path.parent() {
+                    std::fs::create_dir_all(parent_dir)?;
+                }
+                let file = File::open(file_path)?;
+                command.stdout(Stdio::from(file));
+            } else {
+                eprintln! {"expected file name after redirection"};
+            };
+        }
+        Some(t) => eprintln!("found: {:?}", t),
+    }
+    Ok(())
+}
+
 fn parse_input(input: &str) -> Result<Vec<String>> {
-    let mut command_list = vec![];
+    let mut command_list: Vec<String> = vec![];
     let mut buf = String::new();
     let mut in_single_quotes = false;
     let mut in_double_quotes = false;
@@ -126,67 +208,107 @@ fn parse_input(input: &str) -> Result<Vec<String>> {
     if !buf.is_empty() {
         command_list.push(buf.clone());
     }
-    // all input that can no longer be split on space is still added to the command list
     Ok(command_list)
 }
 
-fn invoke_echo(cmd_list: &[String]) {
-    let out = cmd_list.join(" ");
-    println!("{out}");
-}
+fn tokenize_input(input: Vec<String>) -> Option<Vec<Token>> {
+    if input.is_empty() {
+        eprintln!("input string was empty when attempted tokinization");
+        return None;
+    }
+    let mut tokenized = vec![];
+    let mut iter = input.into_iter();
+    tokenized.push(Token::Command(iter.next().unwrap())); //first String always exists by the above if case
 
-fn invoke_type(cmd_list: &[String]) {
-    for cmd in cmd_list {
-        if Builtin::from_str(cmd).is_ok() {
-            println!("{cmd} is a shell builtin");
-            return;
-        }
-        // go through every directory and check if a file with the name exist that has exec permissions
-        let Some(env_path) = std::env::var_os("PATH") else {
-            panic!("PATH env var not set");
-        };
-        if let Some(file_path) = find_exec_file(cmd, env_path) {
-            println!("{cmd} is {}", file_path.display());
-        } else {
-            println!("{cmd}: not found");
+    for s in iter {
+        match s.as_str() {
+            ">" | "1>" => tokenized.push(Token::Pipe(s)),
+            _ => tokenized.push(Token::Arg(s)),
         }
     }
+
+    Some(tokenized)
 }
 
-fn find_exec_file(cmd: &str, env_path: std::ffi::OsString) -> Option<PathBuf> {
-    for path in std::env::split_paths(&env_path) {
+fn invoke_echo<I, S>(cmd_list: I) -> String
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    cmd_list
+        .into_iter()
+        .map(|s| s.as_ref().to_owned())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn invoke_type<I, S>(cmd_list: I) -> String
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    use std::fmt::Write;
+    let mut buf = String::new();
+    for cmd in cmd_list {
+        let cmd = cmd.as_ref();
+        if Builtin::from_str(cmd).is_ok() {
+            let _ = writeln!(buf, "{cmd} is a shell builtin");
+        }
+        // go through every directory and check if a file with the name exist that has exec permissions
+        if let Some(file_path) = find_exec_file(cmd) {
+            let _ = writeln!(buf, "{cmd} is {}", file_path.display());
+        } else {
+            let _ = writeln!(buf, "{cmd}: not found");
+        }
+    }
+    buf
+}
+
+// TODO: consider making this a result to handle distinct errors
+fn find_exec_file(cmd: &str) -> Option<PathBuf> {
+    let Some(env_path) = std::env::var_os("PATH") else {
+        eprintln!("PATH env var not set");
+        return None;
+    };
+    for mut path in std::env::split_paths(&env_path) {
         if let Ok(exists) = path.try_exists() {
             if !exists {
                 continue;
             }
-            for dir in path.read_dir().expect("dir should exist").flatten() {
-                let file_name = dir.file_name();
-                let file_path = dir.path();
-                if file_name == cmd && file_path.executable() {
-                    return Some(file_path);
-                }
+            path.push(cmd);
+            if path.executable() {
+                return Some(path);
             }
         }
     }
     None
 }
 
-fn invoke_pwd(_cmd_list: &[String]) {
-    if let Ok(curr) = current_dir() {
-        println!("{}", curr.display());
-    }
+fn invoke_pwd<I, S>(_cmd_list: I) -> Result<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let curr = current_dir()?;
+    Ok(format!("{}", curr.display()))
 }
 
-fn invoke_cd(cmd_list: &[String]) {
+fn invoke_cd<I, S>(cmd_list: I) -> Option<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let cmd_list: Vec<_> = cmd_list.into_iter().collect();
     assert!(cmd_list.len() == 1);
-    let path = match cmd_list[0].as_str() {
+    let path = match cmd_list[0].as_ref() {
         "~" => PathBuf::from(&std::env::var_os("HOME").expect("HOME env key not set")),
-        _ => PathBuf::from(&cmd_list[0]),
+        _ => PathBuf::from(&cmd_list[0].as_ref()),
     };
     if path.exists() {
         // if cd fails then proceed to next REPL iter
         let _ = set_current_dir(path);
+        None
     } else {
-        println!("cd: {}: No such file or directory", path.display());
+        Some(format!("cd: {}: No such file or directory", path.display()))
     }
 }
