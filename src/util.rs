@@ -20,3 +20,17 @@ pub(crate) fn find_exec_file(cmd: &str) -> Option<PathBuf> {
     }
     None
 }
+
+pub(crate) fn start_of_last_word(s: &str, mut pos: usize) -> usize {
+    let bytes = s.as_bytes();
+
+    while pos > 0 && bytes[pos] == b' ' {
+        pos -= 1;
+    }
+
+    while pos > 0 && bytes[pos] != b' ' {
+        pos -= 1;
+    }
+
+    if bytes[pos] == b' ' { pos + 1 } else { pos }
+}

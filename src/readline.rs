@@ -1,6 +1,8 @@
 use crate::trie::TRIE_ASCII_SIZE;
+use crate::util::start_of_last_word;
 use crate::{input_parsing::BUILTIN_COMMANDS, trie::TrieNode};
 use faccess::PathExt;
+use rustyline::completion;
 use rustyline::{Helper, Highlighter, Hinter, Validator, completion::Completer};
 
 #[derive(Debug, Helper, Highlighter, Validator, Hinter)]
@@ -56,7 +58,7 @@ impl Completer for TrieCompleter {
     fn complete(
         &self,
         line: &str,
-        _pos: usize,
+        pos: usize,
         _ctx: &rustyline::Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
         let mut candidates = self.builtin_trie.auto_complete(line).unwrap_or(vec![]);
@@ -64,10 +66,14 @@ impl Completer for TrieCompleter {
         let mut external_candidates = self.get_external_candidates(line).unwrap_or(vec![]);
 
         candidates.append(&mut external_candidates);
+
+        let idx = start_of_last_word(line, pos - 1);
+
         if candidates.len() == 1 {
             candidates[0].push(' ');
+            return Ok((idx, candidates));
         }
-        Ok((0, candidates))
+        Ok((idx, candidates))
     }
 
     fn update(

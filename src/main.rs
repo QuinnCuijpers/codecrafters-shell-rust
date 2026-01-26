@@ -28,7 +28,6 @@ fn main() -> anyhow::Result<()> {
         let helper = TrieCompleter::with_builtin_commands(&BUILTIN_COMMANDS);
         let config = Config::builder()
             .completion_type(CompletionType::List)
-            .completion_show_all_if_ambiguous(true)
             .build();
         let mut rl = Editor::with_config(config)?;
         rl.set_helper(Some(helper));
