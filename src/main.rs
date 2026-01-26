@@ -12,6 +12,7 @@ use input_parsing::Token;
 use input_parsing::parse_input;
 use input_parsing::tokenize_input;
 use invoke::{invoke_cd, invoke_echo, invoke_pwd, invoke_type};
+use rustyline::CompletionType;
 use rustyline::Config;
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
@@ -26,6 +27,7 @@ fn main() -> anyhow::Result<()> {
     loop {
         let helper = TrieCompleter::with_builtin_commands(&BUILTIN_COMMANDS);
         let config = Config::builder()
+            .completion_type(CompletionType::List)
             .completion_show_all_if_ambiguous(true)
             .build();
         let mut rl = Editor::with_config(config)?;

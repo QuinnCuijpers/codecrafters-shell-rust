@@ -1,7 +1,7 @@
-use crate::trie::TrieNode;
+use crate::trie::TRIE_ASCII_SIZE;
+use crate::{input_parsing::BUILTIN_COMMANDS, trie::TrieNode};
 use faccess::PathExt;
 use rustyline::{Helper, Highlighter, Hinter, Validator, completion::Completer};
-use crate::trie::TRIE_ASCII_SIZE;
 
 #[derive(Debug, Helper, Highlighter, Validator, Hinter)]
 pub struct TrieCompleter {
@@ -15,9 +15,7 @@ impl TrieCompleter {
             builtin_trie.insert(word);
         }
 
-        Self {
-            builtin_trie,
-        }
+        Self { builtin_trie }
     }
 
     pub(crate) fn get_external_candidates(&self, prefix: &str) -> Option<Vec<String>> {
@@ -32,17 +30,18 @@ impl TrieCompleter {
                 if !exists {
                     continue;
                 }
-                for file in path.read_dir().unwrap() {
-                    if let Ok(entry) = file {
-                        let file_path = entry.path();
-                        let file_name = entry.file_name();
-                        let name_str = file_name.to_str();
-                        let Some(name_str) = name_str else {
-                            continue;
-                        };
-                        if name_str.starts_with(prefix) && file_path.executable() {
-                            external_trie.insert(name_str);
-                        }
+                for entry in path.read_dir().unwrap().flatten() {
+                    let file_path = entry.path();
+                    let file_name = entry.file_name();
+                    let name_str = file_name.to_str();
+                    let Some(name_str) = name_str else {
+                        continue;
+                    };
+                    if name_str.starts_with(prefix)
+                        && file_path.executable()
+                        && !BUILTIN_COMMANDS.contains(&name_str)
+                    {
+                        external_trie.insert(name_str);
                     }
                 }
             }
@@ -55,19 +54,18 @@ impl Completer for TrieCompleter {
     type Candidate = String;
 
     fn complete(
-        &self, // FIXME should be `&mut self`
+        &self,
         line: &str,
         _pos: usize,
         _ctx: &rustyline::Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-        let mut candidates= self.builtin_trie.auto_complete(line).unwrap_or(vec![]);
+        let mut candidates = self.builtin_trie.auto_complete(line).unwrap_or(vec![]);
 
         let mut external_candidates = self.get_external_candidates(line).unwrap_or(vec![]);
-        
-        candidates.append(&mut external_candidates);
 
-        for s in candidates.iter_mut() {
-            s.push(' ');
+        candidates.append(&mut external_candidates);
+        if candidates.len() == 1 {
+            candidates[0].push(' ');
         }
         Ok((0, candidates))
     }

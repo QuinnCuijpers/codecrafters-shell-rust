@@ -1,6 +1,6 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
-pub(crate) const TRIE_ASCII_SIZE: usize =  256;
+pub(crate) const TRIE_ASCII_SIZE: usize = 256;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TrieNode<const N: usize> {
@@ -16,7 +16,7 @@ impl<const N: usize> TrieNode<N> {
     pub(crate) fn contains(&self, key: &str) -> bool {
         let mut x = self;
         for c in key.chars() {
-            let i = ((c as u8) - b'a') as usize;
+            let i = (c as u8) as usize;
             x = match x.children[i].as_deref() {
                 Some(child) => child,
                 None => return false,
@@ -28,7 +28,7 @@ impl<const N: usize> TrieNode<N> {
     pub(crate) fn insert(&mut self, key: &str) {
         let mut x = self;
         for c in key.chars() {
-            let i = ((c as u8)) as usize;
+            let i = (c as u8) as usize;
             if i > TRIE_ASCII_SIZE {
                 return;
             }
@@ -49,14 +49,11 @@ impl<const N: usize> TrieNode<N> {
         let mut res = vec![];
         // set x to last node of prefix
         for c in prefix.chars() {
-            let i = ((c as u8)) as usize;
+            let i = (c as u8) as usize;
             if i > TRIE_ASCII_SIZE {
                 return None;
             }
-            x = match x.children[i].as_deref() {
-                Some(child) => child,
-                None => return None,
-            }
+            x = x.children[i].as_deref()?
         }
 
         // find all posiible string ends
@@ -70,9 +67,9 @@ impl<const N: usize> TrieNode<N> {
         Some(res)
     }
 
-    fn dfs(&self) -> HashSet<String> {
+    fn dfs(&self) -> BTreeSet<String> {
         let mut q = vec![];
-        let mut res = HashSet::new();
+        let mut res = BTreeSet::new();
         let x = self;
 
         let buf = String::new();
@@ -102,8 +99,8 @@ impl<const N: usize> TrieNode<N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::trie::TrieNode;
     use super::*;
+    use crate::trie::TrieNode;
 
     #[test]
     fn auto_complete() {
