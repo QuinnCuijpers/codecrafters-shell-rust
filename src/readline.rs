@@ -2,7 +2,6 @@ use crate::trie::TRIE_ASCII_SIZE;
 use crate::util::start_of_last_word;
 use crate::{input_parsing::BUILTIN_COMMANDS, trie::TrieNode};
 use faccess::PathExt;
-use rustyline::completion;
 use rustyline::{Helper, Highlighter, Hinter, Validator, completion::Completer};
 
 #[derive(Debug, Helper, Highlighter, Validator, Hinter)]

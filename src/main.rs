@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
         let Some(tokens) = tokenize_input(command_list) else {
             continue;
         };
-        // println!("{:?}", tokens);
+        // eprintln!("{:?}", tokens);
         let mut token_iter = tokens.iter().peekable();
 
         let command = token_iter.next().unwrap();
@@ -85,7 +85,7 @@ fn main() -> anyhow::Result<()> {
             };
             handle_builtin(builtin_out, token_iter);
         } else if find_exec_file(s).is_some() {
-            handle_external_exec(s, args, token_iter)?;
+            handle_external_exec(s, args, &mut token_iter, None)?;
         } else {
             println!("{s}: command not found")
         }

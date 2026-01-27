@@ -56,12 +56,10 @@ impl<const N: usize> TrieNode<N> {
                 } else {
                     x.children[idx] = Some(Box::new(TrieNode::new()))
                 }
-            } else {
-                if i == count - 1 {
-                    if let Some(child) = x.children[idx].as_deref_mut() {
-                        child.set_end_node();
-                    }
-                }
+            } else if i == count - 1
+                && let Some(child) = x.children[idx].as_deref_mut()
+            {
+                child.set_end_node();
             }
             // unwrap as by prev if this value is always set
             x = x.children[idx].as_deref_mut().unwrap()
@@ -144,7 +142,6 @@ mod tests {
         assert_eq!(trie.auto_complete("ech"), Some(vec!["echo".into()]));
     }
 
-
     #[test]
     fn auto_complete_overlap() {
         let mut trie: TrieNode<TRIE_ASCII_SIZE> = TrieNode::new();
@@ -152,6 +149,13 @@ mod tests {
         trie.insert("xyz_dog_owl");
         trie.insert("xyz_dog_owl_cow");
 
-        assert_eq!(trie.auto_complete("xyz_"), Some(vec!["xyz_dog".into(), "xyz_dog_owl".into(), "xyz_dog_owl_cow".into()]));
+        assert_eq!(
+            trie.auto_complete("xyz_"),
+            Some(vec![
+                "xyz_dog".into(),
+                "xyz_dog_owl".into(),
+                "xyz_dog_owl_cow".into()
+            ])
+        );
     }
 }

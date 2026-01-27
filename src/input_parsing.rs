@@ -4,8 +4,9 @@ use std::str::FromStr;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Command(String),
-    Pipe(String),
+    Redirect(String),
     Arg(String),
+    Pipe(String), //TODO: may not require to hold data as only one character creates this
 }
 
 pub(crate) const BUILTIN_COMMANDS: [&str; 5] = ["echo", "exit", "type", "pwd", "cd"];
@@ -104,10 +105,22 @@ pub(crate) fn tokenize_input(input: Vec<String>) -> Option<Vec<Token>> {
     let mut iter = input.into_iter();
     tokenized.push(Token::Command(iter.next().unwrap())); //first String always exists by the above if case
 
+    let mut new_command = false;
     for s in iter {
         match s.as_str() {
-            ">" | "1>" | "2>" | ">>" | "1>>" | "2>>" => tokenized.push(Token::Pipe(s)),
-            _ => tokenized.push(Token::Arg(s)),
+            ">" | "1>" | "2>" | ">>" | "1>>" | "2>>" => tokenized.push(Token::Redirect(s)),
+            "|" => {
+                new_command = true;
+                tokenized.push(Token::Pipe(s));
+            }
+            _ => {
+                if new_command {
+                    tokenized.push(Token::Command(s));
+                    new_command = !new_command;
+                } else {
+                    tokenized.push(Token::Arg(s));
+                }
+            }
         }
     }
 
