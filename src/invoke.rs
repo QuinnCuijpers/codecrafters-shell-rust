@@ -1,7 +1,24 @@
 use crate::input_parsing::Builtin;
 use crate::util::find_exec_file;
 use anyhow::Result;
-use std::{env, path::PathBuf, str::FromStr};
+use std::{env, ffi::OsStr, path::PathBuf, str::FromStr};
+
+pub(crate) fn invoke_builtin<I, S>(cmd: Builtin, args: I) -> Option<String>
+where
+    I: Iterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let args_str: Vec<_> = args
+        .map(|s| s.as_ref().to_str().unwrap().to_string())
+        .collect();
+    match cmd {
+        Builtin::Echo => Some(invoke_echo(args_str)),
+        Builtin::Exit => unreachable!(), // unreachable as we check for exit in main beforehand
+        Builtin::Tipe => Some(invoke_type(args_str)),
+        Builtin::Pwd => Some(invoke_pwd(args_str).unwrap()),
+        Builtin::Cd => invoke_cd(args_str),
+    }
+}
 
 pub(crate) fn invoke_pwd<I, S>(_cmd_list: I) -> Result<String>
 where
@@ -9,7 +26,7 @@ where
     S: AsRef<str>,
 {
     let curr = env::current_dir()?;
-    Ok(format!("{}", curr.display()))
+    Ok(format!("{}\n", curr.display()))
 }
 
 pub(crate) fn invoke_cd<I, S>(cmd_list: I) -> Option<String>
@@ -28,7 +45,7 @@ where
         let _ = env::set_current_dir(path);
         None
     } else {
-        Some(format!("cd: {}: No such file or directory", path.display()))
+        Some(format!("cd: {}: No such file or directory\n", path.display()))
     }
 }
 
@@ -37,11 +54,13 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<str>,
 {
-    cmd_list
+    let mut s = cmd_list
         .into_iter()
         .map(|s| s.as_ref().to_owned())
         .collect::<Vec<_>>()
-        .join(" ")
+        .join(" ");
+    s.push('\n');
+    s
 }
 
 pub(crate) fn invoke_type<I, S>(cmd_list: I) -> String
@@ -69,5 +88,6 @@ where
             let _ = write!(buf, "{cmd_str}: not found");
         }
     }
+    buf.push('\n');
     buf
 }

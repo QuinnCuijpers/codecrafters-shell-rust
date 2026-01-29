@@ -5,34 +5,70 @@ use std::{
     iter::Peekable,
     path::PathBuf,
     process::{Child, Command, Stdio},
+    str::FromStr,
 };
 
-use crate::input_parsing::Token;
+use crate::{
+    input_parsing::{Builtin, Token, parse_input},
+    invoke::invoke_builtin,
+    util::find_exec_file,
+};
 use anyhow::Result;
 
-pub(crate) fn handle_external_exec<'a, S, I, J>(
-    s: &str,
+pub(crate) fn handle_command<'a, I, J, S>(
+    cmd_str: &str,
     args: J,
     token_iter: &mut Peekable<I>,
+) -> Result<()>
+where
+    I: Iterator<Item = &'a Token>,
+    J: Iterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    if let Ok(builtin) = Builtin::from_str(cmd_str) {
+        handle_builtin(builtin, args, token_iter, None, None)?;
+    } else if find_exec_file(cmd_str).is_some() {
+        handle_external_exec(cmd_str, args, token_iter, None, None)?;
+    } else {
+        println!("{cmd_str}: command not found")
+    }
+    Ok(())
+}
+
+pub(crate) fn handle_external_exec<'a, S, I, J>(
+    cmd_str: &str,
+    args: J,
+    token_iter: &mut Peekable<I>,
+    prev_command_output: Option<String>,
     prev_command: Option<&mut Child>,
 ) -> Result<()>
 where
     I: Iterator<Item = &'a Token>,
-    J: IntoIterator<Item = S>,
+    J: Iterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    let mut command = Command::new(s);
+    let mut command = Command::new(cmd_str);
+
     command.args(args);
+
     match token_iter.next() {
         // no more tokens
         None => {
-            if let Some(prev) = prev_command {
-                if let Some(stdout) = prev.stdout.take() {
-                    command.stdin(stdout);
-                }
+            if prev_command_output.is_some() {
+                command.stdin(Stdio::piped());
+            } else if let Some(prev) = prev_command
+                && prev.stdout.is_some()
+            {
+                command.stdin(prev.stdout.take().unwrap());
             }
 
             let mut child = command.spawn()?;
+
+            if let Some(prev) = prev_command_output {
+                let mut stdin = child.stdin.take().unwrap();
+                stdin.write_all(prev.as_bytes())?;
+            }
+
             child.wait()?;
         }
         Some(Token::Redirect(c)) => {
@@ -74,16 +110,25 @@ where
             child.wait()?;
         }
         Some(Token::Pipe(_)) => {
-            
             command.stdout(Stdio::piped());
 
-            if let Some(prev) = prev_command {
-                if let Some(stdout) = prev.stdout.take() {
-                    command.stdin(stdout);
-                }
+            if let Some(prev) = prev_command
+                && let Some(stdout) = prev.stdout.take()
+            {
+                command.stdin(stdout);
+            }
+
+            if prev_command_output.is_some() {
+                command.stdin(Stdio::piped());
             }
 
             let mut child = command.spawn()?;
+
+            if let Some(prev) = prev_command_output {
+                let mut stdin = child.stdin.take().unwrap();
+                stdin.write_all(prev.as_bytes())?;
+                drop(stdin);
+            }
 
             let Some(Token::Command(cmd)) = token_iter.next() else {
                 anyhow::bail!("Piped into nothing");
@@ -96,9 +141,12 @@ where
             }
 
             // create pipeline recursively
-            handle_external_exec(cmd, next_args, token_iter, Some(&mut child))?;
+            if let Ok(cmd) = Builtin::from_str(cmd) {
+                handle_builtin(cmd, next_args.iter(), token_iter, None, Some(&mut child))?;
+            } else {
+                handle_external_exec(cmd, next_args.iter(), token_iter, None, Some(&mut child))?;
+            }
 
-            // wait on this subcommand after recursively creating the pipeline
             child.wait()?;
         }
         Some(t) => unreachable!("found unhandled token: {:?}", t),
@@ -106,60 +154,105 @@ where
     Ok(())
 }
 
-pub(crate) fn handle_builtin<'a, I>(builtin_out: Option<String>, token_iter: I)
+pub(crate) fn handle_builtin<'a, S, I, J>(
+    builtin: Builtin,
+    args: J,
+    token_iter: &mut Peekable<I>,
+    prev_command_output: Option<String>,
+    _prev_command: Option<&mut Child>,
+) -> Result<()>
 where
-    I: IntoIterator<Item = &'a Token>,
+    I: Iterator<Item = &'a Token>,
+    J: Iterator<Item = S>,
+    S: AsRef<OsStr>,
 {
-    let Some(mut builtin_out) = builtin_out else {
-        return;
+    let mut all_args: Vec<String> = args
+        .map(|s| s.as_ref().to_str().unwrap().to_string())
+        .collect();
+
+    if let Some(out) = prev_command_output {
+        let extra_args = parse_input(&out)?;
+        all_args.extend(extra_args);
+    }
+    
+    // if let Some(child) = prev_command
+    // && let Some(stdout) = child.stdout.as_mut()
+    // {
+    //     // builtins do not read stdin
+    // }
+
+    let Some(builtin_out) = invoke_builtin(builtin, all_args.iter()) else {
+        // early return for cd
+        return Ok(());
     };
-    let mut iter = token_iter.into_iter();
-    match iter.next() {
-        None => println!("{builtin_out}"),
+
+    match token_iter.next() {
+        None => print!("{builtin_out}"),
         Some(Token::Redirect(c)) => {
-            if let Some(Token::Arg(file_name)) = iter.next() {
-                let file_path = PathBuf::from(file_name);
-                if let Some(parent_dir) = file_path.parent()
-                    && std::fs::create_dir_all(parent_dir).is_err()
-                {
-                    eprintln!("Failed to create dirs required for {}", file_path.display());
-                    return;
-                };
+            let Some(Token::Arg(file_name)) = token_iter.next() else {
+                anyhow::bail! {"expected file name after redirection"};
+            };
+            let file_path = PathBuf::from(file_name);
+            if let Some(parent_dir) = file_path.parent()
+                && std::fs::create_dir_all(parent_dir).is_err()
+            {
+                anyhow::bail!("Failed to create dirs required for {}", file_path.display());
+            };
 
-                let mut file_options = File::options();
-                file_options.create(true).write(true);
+            let mut file_options = File::options();
+            file_options.create(true).write(true);
 
-                if c == "2>" {
+            match c.as_str() {
+                "2>" => {
                     let _ = file_options
                         .open(file_path)
                         .expect("couldnt open file for redirecting stderr");
-                    println!("{builtin_out}");
-                    return;
-                } else if c == "2>>" {
+                    print!("{builtin_out}");
+                }
+                "2>>" => {
                     file_options.append(true);
                     let _ = file_options
                         .open(file_path)
                         .expect("couldnt open file for appending stderr");
-                    println!("{builtin_out}");
-                    return;
+                    print!("{builtin_out}");
                 }
-
-                // when writing to files linux adds a newline character at the end
-                builtin_out.push('\n');
-
-                if c == ">>" || c == "1>>" {
+                ">>" | "1>>" => {
+                    // when writing to files linux adds a newline character at the end
                     file_options.append(true);
+                    let mut file = file_options
+                        .open(file_path)
+                        .expect("couldnt open file for stdout appending");
+                    let _ = file.write_all(builtin_out.as_bytes());
                 }
-
-                let mut file = file_options
-                    .open(file_path)
-                    .expect("couldnt open file for stdout redirection");
-                let _ = file.write_all(builtin_out.as_bytes());
-            } else {
-                eprintln! {"expected file name after redirection"};
+                ">" | "1>" => {
+                    // when writing to files linux adds a newline character at the end
+                    let mut file = file_options
+                        .open(file_path)
+                        .expect("couldnt open file for stdout redirection");
+                    let _ = file.write_all(builtin_out.as_bytes());
+                }
+                _ => unreachable!(),
             };
         }
-        Some(Token::Pipe(_t)) => todo!(),
+        Some(Token::Pipe(_t)) => {
+            let Some(Token::Command(cmd)) = token_iter.next() else {
+                anyhow::bail!("Piped into nothing");
+            };
+
+            let mut next_args = vec![];
+            while let Some(Token::Arg(s)) = token_iter.peek() {
+                next_args.push(s.clone());
+                token_iter.next();
+            }
+
+            // create pipeline recursively
+            if let Ok(cmd) = Builtin::from_str(cmd) {
+                handle_builtin(cmd, next_args.iter(), token_iter, Some(builtin_out), None)?;
+            } else {
+                handle_external_exec(cmd, next_args.iter(), token_iter, Some(builtin_out), None)?;
+            }
+        }
         Some(_t) => unreachable!(),
     }
+    Ok(())
 }

@@ -29,17 +29,17 @@ impl<const N: usize> TrieNode<N> {
         self.end = true;
     }
 
-    pub(crate) fn contains(&self, key: &str) -> bool {
-        let mut x = self;
-        for c in key.chars() {
-            let i = (c as u8) as usize;
-            x = match x.children[i].as_deref() {
-                Some(child) => child,
-                None => return false,
-            }
-        }
-        true
-    }
+    // pub(crate) fn contains(&self, key: &str) -> bool {
+    //     let mut x = self;
+    //     for c in key.chars() {
+    //         let i = (c as u8) as usize;
+    //         x = match x.children[i].as_deref() {
+    //             Some(child) => child,
+    //             None => return false,
+    //         }
+    //     }
+    //     true
+    // }
 
     pub(crate) fn insert(&mut self, key: &str) {
         let mut x = self;
@@ -64,10 +64,6 @@ impl<const N: usize> TrieNode<N> {
             // unwrap as by prev if this value is always set
             x = x.children[idx].as_deref_mut().unwrap()
         }
-    }
-
-    fn delete(&mut self, _key: &str) {
-        todo!();
     }
 
     pub(crate) fn auto_complete(&self, prefix: &str) -> Option<Vec<String>> {
@@ -131,9 +127,6 @@ mod tests {
         let mut trie: TrieNode<TRIE_ASCII_SIZE> = TrieNode::new();
         trie.insert("echo");
         trie.insert("exit");
-
-        assert!(trie.contains("echo"));
-        assert!(trie.contains("exit"));
 
         assert_eq!(
             trie.auto_complete("e"),

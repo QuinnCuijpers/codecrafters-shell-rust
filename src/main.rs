@@ -6,22 +6,18 @@ mod trie;
 mod util;
 
 use anyhow::Context;
-use handle_command::{handle_builtin, handle_external_exec};
-use input_parsing::Builtin;
 use input_parsing::Token;
 use input_parsing::parse_input;
 use input_parsing::tokenize_input;
-use invoke::{invoke_cd, invoke_echo, invoke_pwd, invoke_type};
 use rustyline::CompletionType;
 use rustyline::Config;
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
 use std::io::{self, Write};
-use std::str::FromStr;
 
+use crate::handle_command::handle_command;
 use crate::input_parsing::BUILTIN_COMMANDS;
 use crate::readline::TrieCompleter;
-use crate::util::find_exec_file;
 
 fn main() -> anyhow::Result<()> {
     loop {
@@ -64,10 +60,14 @@ fn main() -> anyhow::Result<()> {
 
         let command = token_iter.next().unwrap();
 
-        let Token::Command(s) = command else {
+        let Token::Command(cmd_str) = command else {
             // first string should always be a command
             continue;
         };
+
+        if cmd_str == "exit" {
+            break;
+        }
 
         let mut args = vec![];
         while let Some(Token::Arg(s)) = token_iter.peek() {
@@ -75,20 +75,7 @@ fn main() -> anyhow::Result<()> {
             token_iter.next();
         }
 
-        if let Ok(builtin) = Builtin::from_str(s.as_str()) {
-            let builtin_out = match builtin {
-                Builtin::Echo => Some(invoke_echo(args)),
-                Builtin::Exit => break,
-                Builtin::Tipe => Some(invoke_type(args)),
-                Builtin::Pwd => Some(invoke_pwd(args)?),
-                Builtin::Cd => invoke_cd(args),
-            };
-            handle_builtin(builtin_out, token_iter);
-        } else if find_exec_file(s).is_some() {
-            handle_external_exec(s, args, &mut token_iter, None)?;
-        } else {
-            println!("{s}: command not found")
-        }
+        handle_command(cmd_str, args.iter(), &mut token_iter)?;
     }
     anyhow::Ok(())
 }
