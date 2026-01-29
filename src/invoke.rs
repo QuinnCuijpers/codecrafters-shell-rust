@@ -17,6 +17,7 @@ where
         Builtin::Tipe => Some(invoke_type(args_str)),
         Builtin::Pwd => Some(invoke_pwd(args_str).unwrap()),
         Builtin::Cd => invoke_cd(args_str),
+        Builtin::History => todo!(),
     }
 }
 

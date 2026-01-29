@@ -18,6 +18,7 @@ pub enum Builtin {
     Tipe,
     Pwd,
     Cd,
+    History,
 }
 
 impl FromStr for Builtin {
@@ -30,6 +31,7 @@ impl FromStr for Builtin {
             "type" => Ok(Builtin::Tipe),
             "pwd" => Ok(Builtin::Pwd),
             "cd" => Ok(Builtin::Cd),
+            "history" => Ok(Builtin::History),
             _ => Err(anyhow::anyhow!(format!("unknown builtin {s}"))),
         }
     }
