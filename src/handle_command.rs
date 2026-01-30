@@ -14,19 +14,18 @@ use crate::{
     util::find_exec_file,
 };
 use anyhow::Result;
-use rustyline::history::History;
+use rustyline::history::FileHistory;
 
-pub(crate) fn handle_command<'a, I, J, S, H>(
+pub(crate) fn handle_command<'a, I, J, S>(
     cmd_str: &str,
     args: J,
     token_iter: &mut Peekable<I>,
-    history: &H,
+    history: &mut FileHistory,
 ) -> Result<()>
 where
     I: Iterator<Item = &'a Token>,
     J: Iterator<Item = S>,
     S: AsRef<OsStr>,
-    H: History,
 {
     if let Ok(builtin) = Builtin::from_str(cmd_str) {
         handle_builtin(builtin, args, token_iter, None, None, history)?;
@@ -38,19 +37,18 @@ where
     Ok(())
 }
 
-pub(crate) fn handle_external_exec<'a, S, I, J, H>(
+pub(crate) fn handle_external_exec<'a, S, I, J>(
     cmd_str: &str,
     args: J,
     token_iter: &mut Peekable<I>,
     prev_command_output: Option<String>,
     prev_command: Option<&mut Child>,
-    history: &H,
+    history: &mut FileHistory,
 ) -> Result<()>
 where
     I: Iterator<Item = &'a Token>,
     J: Iterator<Item = S>,
     S: AsRef<OsStr>,
-    H: History,
 {
     let mut command = Command::new(cmd_str);
 
@@ -173,19 +171,18 @@ where
     Ok(())
 }
 
-pub(crate) fn handle_builtin<'a, S, I, J, H>(
+pub(crate) fn handle_builtin<'a, S, I, J>(
     builtin: Builtin,
     args: J,
     token_iter: &mut Peekable<I>,
     prev_command_output: Option<String>,
     _prev_command: Option<&mut Child>,
-    history: &H,
+    history: &mut FileHistory,
 ) -> Result<()>
 where
     I: Iterator<Item = &'a Token>,
     J: Iterator<Item = S>,
     S: AsRef<OsStr>,
-    H: History,
 {
     let mut all_args: Vec<String> = args
         .map(|s| s.as_ref().to_str().unwrap().to_string())

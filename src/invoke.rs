@@ -1,14 +1,24 @@
 use crate::input_parsing::Builtin;
 use crate::util::find_exec_file;
 use anyhow::Result;
-use rustyline::history::History;
-use std::{cmp::min, env, ffi::OsStr, path::PathBuf, str::FromStr};
+use rustyline::history::{FileHistory, History};
+use std::{
+    cmp::min,
+    env,
+    ffi::OsStr,
+    fs::{read, write},
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
-pub(crate) fn invoke_builtin<I, S, H>(cmd: Builtin, args: I, history: &H) -> Option<String>
+pub(crate) fn invoke_builtin<I, S>(
+    cmd: Builtin,
+    args: I,
+    history: &mut FileHistory,
+) -> Option<String>
 where
     I: Iterator<Item = S>,
     S: AsRef<OsStr>,
-    H: History,
 {
     let args_str: Vec<_> = args
         .map(|s| s.as_ref().to_str().unwrap().to_string())
@@ -23,17 +33,33 @@ where
     }
 }
 
-fn invoke_history<H>(args_str: Vec<String>, history: &H) -> Option<String>
+fn invoke_history(args_str: Vec<String>, history: &mut FileHistory) -> Option<String>
 where
-    H: History,
 {
-    let length = if let Some(arg) = args_str.iter().next() {
+    let mut args_iter = args_str.iter();
+    let length = if let Some(arg) = args_iter.next() {
         match arg.as_str() {
             s if s.parse::<usize>().is_ok() => {
                 let n: usize = s.parse().unwrap();
                 min(n, history.len())
             }
-            _ => history.len() ,
+            "-r" => {
+                if let Some(file_name) = args_iter.next() {
+                    if history.load(Path::new(file_name)).is_err() {
+                        eprintln!("Could not read history from file {file_name}");
+                    } else {
+                        let mut new_contents = format!("history -r {file_name}\n").as_bytes().to_owned();
+                        if let Ok(mut contents) = read(file_name) {
+                            new_contents.append(&mut contents);
+                            let _ = write("history.txt", new_contents);
+                            let _ = history.load(Path::new("history.txt"));
+                        };
+                        let _ = history;
+                    }
+                };
+                0
+            }
+            _ => history.len(),
         }
     } else {
         history.len()

@@ -8,4 +8,4 @@ rust-version = "1.91"
 [dependencies]
 anyhow = "1.0.100"                                # error handling
 faccess = "0.2.4"
-rustyline = {version = "17.0.1", features = ["derive"]}
+rustyline = {version = "17.0.1", features = ["derive", "with-file-history"]}
