@@ -48,7 +48,8 @@ where
                     if history.load(Path::new(file_name)).is_err() {
                         eprintln!("Could not read history from file {file_name}");
                     } else {
-                        let mut new_contents = format!("history -r {file_name}\n").as_bytes().to_owned();
+                        let mut new_contents =
+                            format!("history -r {file_name}\n").as_bytes().to_owned();
                         if let Ok(mut contents) = read(file_name) {
                             new_contents.append(&mut contents);
                             let _ = write("history.txt", new_contents);
@@ -57,6 +58,18 @@ where
                         let _ = history;
                     }
                 };
+                0
+            }
+            "-w" => {
+                if let Some(file_name) = args_iter.next() {
+                    let mut new_contents = vec![];
+                    for entry in history.iter() {
+                        let mut new_entry = entry.clone();
+                        new_entry.push('\n');
+                        new_contents.append(&mut new_entry.as_bytes().to_owned());
+                    }
+                    let _ = write(file_name, new_contents);
+                }
                 0
             }
             _ => history.len(),
