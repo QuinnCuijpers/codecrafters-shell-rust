@@ -15,6 +15,8 @@ use rustyline::Editor;
 use rustyline::error::ReadlineError;
 use std::fs;
 use std::fs::File;
+use std::fs::OpenOptions;
+use std::fs::read;
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -42,10 +44,12 @@ fn main() -> anyhow::Result<()> {
 
     let mut rl = Editor::with_config(config)?;
     rl.set_helper(Some(helper));
+    rl.load_history(&history_file)?;
+
+    let old_contents = read(&history_file)?;
     
     loop {
         
-        rl.load_history(&history_file)?;
         let readline = rl.readline("$ ");
         io::stdout().flush().context("flushing stdout")?;
 
@@ -113,11 +117,21 @@ fn main() -> anyhow::Result<()> {
     //     rl.save_history(&history_file)?;
     // }
 
-    let mut file = File::create(&history_file)?;
+    let mut file = OpenOptions::new().append(true).write(true).create(true).open(&history_file)?;
+    let mut new_contents = vec![];
     for entry in rl.history() {
-        _ = file.write_all(entry.as_bytes());
-        _ = file.write_all(b"\n");
+        let mut new_entry = entry.clone();
+        new_entry.push('\n');
+        new_contents.append(&mut new_entry.as_bytes().to_owned());
     }
+
+    if new_contents.starts_with(&old_contents) {
+        new_contents = new_contents[old_contents.len()..].to_vec();
+    }
+
+    _ = file.write_all(&new_contents);
+
+
 
     if history_file == "/tmp/history.txt" {
         fs::remove_file("/tmp/history.txt")?;
