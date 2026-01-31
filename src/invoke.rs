@@ -1,12 +1,14 @@
 use crate::input_parsing::Builtin;
 use crate::util::find_exec_file;
 use anyhow::Result;
-use rustyline::history::{FileHistory, History};
+use rustyline::history::{FileHistory, History, SearchDirection};
 use std::{
     cmp::min,
+    collections::HashSet,
     env,
     ffi::OsStr,
-    fs::{read, write},
+    fs::{File, read, write},
+    io::Write,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -72,6 +74,58 @@ where
                 }
                 0
             }
+            "-a" => {
+                if let Some(file_name) = args_iter.next() {
+                    let mut file_options = File::options();
+                    file_options.create(true).write(true).append(true);
+                    if let Ok(mut file) = file_options.open(file_name)
+                        && let Ok(old_contents) = read(file_name)
+                    {
+                        let mut set = HashSet::new();
+
+                        // TODO: improve this function to get rid of the clone
+                        let old_string = String::from_utf8(old_contents.clone()).unwrap();
+                        for s in old_string.lines() {
+                            set.insert(s);
+                        }
+
+                        let mut last_append_index = None;
+
+                        for (i, entry) in history.iter().rev().skip(1).enumerate() {
+                            if entry.starts_with("history -a") {
+                                last_append_index = Some(history.len() -2 - i);
+                                break;
+                            }
+                        }
+
+                        let start = last_append_index.map(|i| i+1).unwrap_or(0);
+
+                        let mut new_entries = Vec::new();
+
+                        for entry in history.iter().skip(start) {
+                            if !entry.starts_with("history -a") {
+                                new_entries.push(entry.clone());
+                            }
+                        }
+
+                        let mut written = false;
+                        for entry in new_entries {
+                            if set.contains(entry.as_str()) {
+                                continue;
+                            }
+                            _ = file.write_all(entry.as_bytes());
+                            _ = file.write_all(b"\n");
+                            written =true;
+                        }
+
+
+                        if written {
+                            _ = file.write_all(format!("history -a {}\n", file_name).as_bytes());
+                        }
+                    }
+                }
+                0
+            }
             _ => history.len(),
         }
     } else {
@@ -83,7 +137,7 @@ where
     for i in 0..length {
         let entry_idx = history.len() - length + i;
         let entry = history
-            .get(entry_idx, rustyline::history::SearchDirection::Reverse)
+            .get(entry_idx, SearchDirection::Reverse)
             .unwrap()?
             .entry;
         let _ = writeln!(buf, "  {} {}", entry_idx + 1, entry);
