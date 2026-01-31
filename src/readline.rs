@@ -19,7 +19,7 @@ impl TrieCompleter {
         Self { builtin_trie }
     }
 
-    pub(crate) fn get_external_candidates(&self, prefix: &str) -> Option<Vec<String>> {
+    pub(crate) fn get_external_candidates(prefix: &str) -> Option<Vec<String>> {
         let Some(env_path) = std::env::var_os("PATH") else {
             eprintln!("PATH env var not set");
             return None;
@@ -62,7 +62,7 @@ impl Completer for TrieCompleter {
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
         let mut candidates = self.builtin_trie.auto_complete(line).unwrap_or(vec![]);
 
-        let mut external_candidates = self.get_external_candidates(line).unwrap_or(vec![]);
+        let mut external_candidates = TrieCompleter::get_external_candidates(line).unwrap_or(vec![]);
 
         candidates.append(&mut external_candidates);
 

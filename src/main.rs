@@ -67,15 +67,13 @@ fn main() -> anyhow::Result<()> {
                 break;
             }
             Err(err) => {
-                println!("Error: {:?}", err);
+                println!("Error: {err:?}");
                 break;
             }
         };
 
         let trimmed_input = input.trim_end();
-        let Ok(command_list) = parse_input(trimmed_input) else {
-            continue;
-        };
+        let command_list = parse_input(trimmed_input);
 
         let Some(tokens) = tokenize_input(command_list) else {
             continue;
@@ -117,7 +115,7 @@ fn main() -> anyhow::Result<()> {
     //     rl.save_history(&history_file)?;
     // }
 
-    let mut file = OpenOptions::new().append(true).write(true).create(true).open(&history_file)?;
+    let mut file = OpenOptions::new().append(true).create(true).open(&history_file)?;
     let mut new_contents = vec![];
     for entry in rl.history() {
         let mut new_entry = entry.clone();

@@ -52,9 +52,9 @@ impl<const N: usize> TrieNode<N> {
 
             if x.children[idx].is_none() {
                 if i == count - 1 {
-                    x.children[idx] = Some(Box::new(TrieNode::create_end_node()))
+                    x.children[idx] = Some(Box::new(TrieNode::create_end_node()));
                 } else {
-                    x.children[idx] = Some(Box::new(TrieNode::new()))
+                    x.children[idx] = Some(Box::new(TrieNode::new()));
                 }
             } else if i == count - 1
                 && let Some(child) = x.children[idx].as_deref_mut()
@@ -62,7 +62,7 @@ impl<const N: usize> TrieNode<N> {
                 child.set_end_node();
             }
             // unwrap as by prev if this value is always set
-            x = x.children[idx].as_deref_mut().unwrap()
+            x = x.children[idx].as_deref_mut().unwrap();
         }
     }
 
@@ -75,7 +75,7 @@ impl<const N: usize> TrieNode<N> {
             if i > TRIE_ASCII_SIZE {
                 return None;
             }
-            x = x.children[i].as_deref()?
+            x = x.children[i].as_deref()?;
         }
 
         // find all posiible string ends
@@ -101,11 +101,13 @@ impl<const N: usize> TrieNode<N> {
         while let Some((node, curr_str)) = q.pop() {
             for (i, child) in node.children.iter().enumerate() {
                 match child {
-                    None => continue,
+                    None => {},
                     Some(n) => {
-                        let c = (i as u8) as char;
-                        let new_str = format!("{curr_str}{c}");
-                        q.push((n.as_ref(), new_str));
+                        if let Ok(val) = u8::try_from(i) {
+                            let c =  val as char;
+                            let new_str = format!("{curr_str}{c}");
+                            q.push((n.as_ref(), new_str));
+                        }
                     }
                 }
             }

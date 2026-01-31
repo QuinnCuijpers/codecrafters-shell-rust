@@ -32,7 +32,7 @@ where
     } else if find_exec_file(cmd_str).is_some() {
         handle_external_exec(cmd_str, args, token_iter, None, None, history)?;
     } else {
-        println!("{cmd_str}: command not found")
+        println!("{cmd_str}: command not found");
     }
     Ok(())
 }
@@ -189,7 +189,7 @@ where
         .collect();
 
     if let Some(out) = prev_command_output {
-        let extra_args = parse_input(&out)?;
+        let extra_args = parse_input(&out);
         all_args.extend(extra_args);
     }
 
@@ -215,7 +215,7 @@ where
                 && std::fs::create_dir_all(parent_dir).is_err()
             {
                 anyhow::bail!("Failed to create dirs required for {}", file_path.display());
-            };
+            }
 
             let mut file_options = File::options();
             file_options.create(true).write(true);
@@ -250,7 +250,7 @@ where
                     let _ = file.write_all(builtin_out.as_bytes());
                 }
                 _ => unreachable!(),
-            };
+            }
         }
         Some(Token::Pipe(_t)) => {
             let Some(Token::Command(cmd)) = token_iter.next() else {

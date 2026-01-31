@@ -37,7 +37,7 @@ impl FromStr for Builtin {
     }
 }
 
-pub(crate) fn parse_input(input: &str) -> Result<Vec<String>> {
+pub(crate) fn parse_input(input: &str) -> Vec<String> {
     let mut command_list: Vec<String> = vec![];
     let mut buf = String::new();
     let mut in_single_quotes = false;
@@ -61,7 +61,7 @@ pub(crate) fn parse_input(input: &str) -> Result<Vec<String>> {
                     && !in_double_quotes
                     && let Some(next_char) = chars.next()
                 {
-                    buf.push(next_char)
+                    buf.push(next_char);
                 }
                 if in_single_quotes {
                     buf.push(c);
@@ -69,8 +69,7 @@ pub(crate) fn parse_input(input: &str) -> Result<Vec<String>> {
                 if in_double_quotes && let Some(&c) = chars.peek() {
                     // unwrap safe as the peek returns Some
                     match c {
-                        '\"' => buf.push(chars.next().unwrap()),
-                        '\\' => buf.push(chars.next().unwrap()),
+                        '\"'| '\\' => buf.push(chars.next().unwrap()),
                         _ => buf.push('\\'),
                     }
                 }
@@ -83,10 +82,10 @@ pub(crate) fn parse_input(input: &str) -> Result<Vec<String>> {
                 in_single_quotes = !in_single_quotes;
             }
             '\"' => {
-                if !in_single_quotes {
-                    in_double_quotes = !in_double_quotes;
-                } else {
+                if in_single_quotes {
                     buf.push(c);
+                } else {
+                    in_double_quotes = !in_double_quotes;
                 }
             }
             _ => buf.push(c),
@@ -95,7 +94,7 @@ pub(crate) fn parse_input(input: &str) -> Result<Vec<String>> {
     if !buf.is_empty() {
         command_list.push(buf.clone());
     }
-    Ok(command_list)
+    command_list
 }
 
 pub(crate) fn tokenize_input(input: Vec<String>) -> Option<Vec<Token>> {
