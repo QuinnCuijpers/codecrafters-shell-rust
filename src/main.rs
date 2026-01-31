@@ -13,8 +13,8 @@ use rustyline::CompletionType;
 use rustyline::Config;
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
+use std::fs;
 use std::fs::File;
-use std::fs::remove_file;
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -23,18 +23,29 @@ use crate::input_parsing::BUILTIN_COMMANDS;
 use crate::readline::TrieCompleter;
 
 fn main() -> anyhow::Result<()> {
-    File::create("history.txt")?;
+    let env_file = std::env::var_os("HISTFILE");
 
+    let history_file = if let Some(file_name) = env_file {
+        if !Path::new(&file_name).exists() {
+            File::create(&file_name)?;
+        }
+        file_name
+    } else {
+        File::create("/tmp/history.txt")?;
+        "/tmp/history.txt".into()
+    };
+    
+    let helper = TrieCompleter::with_builtin_commands(&BUILTIN_COMMANDS);
+    let config = Config::builder()
+        .completion_type(CompletionType::List)
+        .build();
+
+    let mut rl = Editor::with_config(config)?;
+    rl.set_helper(Some(helper));
+    
     loop {
-        let helper = TrieCompleter::with_builtin_commands(&BUILTIN_COMMANDS);
-        let config = Config::builder()
-            .completion_type(CompletionType::List)
-            .build();
-
-        let mut rl = Editor::with_config(config)?;
-        rl.load_history("history.txt")?;
-        rl.set_helper(Some(helper));
-
+        
+        rl.load_history(&history_file)?;
         let readline = rl.readline("$ ");
         io::stdout().flush().context("flushing stdout")?;
 
@@ -89,16 +100,21 @@ fn main() -> anyhow::Result<()> {
         //     println!("{s}");
         // }
 
-        let history = rl.history_mut();
+        let history = rl.history_mut();        
         handle_command(cmd_str, args.iter(), &mut token_iter, history)?;
 
-        if Path::new("history.txt").exists() {
-            rl.append_history("history.txt")?;
-        } else {
-            File::create("history.txt")?;
-            rl.append_history("history.txt")?;
-        }
     }
-    remove_file("history.txt")?;
+
+    if Path::new(&history_file).exists() {
+        rl.append_history(&history_file)?;
+    } else {
+        File::create(&history_file)?;
+        rl.append_history(&history_file)?;
+    }
+
+    if history_file == "/tmp/history.txt" {
+        fs::remove_file("/tmp/history.txt")?;
+    }
+
     anyhow::Ok(())
 }

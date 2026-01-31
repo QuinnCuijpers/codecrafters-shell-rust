@@ -46,6 +46,16 @@ where
                 min(n, history.len())
             }
             "-r" => {
+                let env_file = std::env::var_os("HISTFILE");
+
+                let history_file = if let Some(file_name) = env_file {
+                    _ = File::create(&file_name);
+                    file_name
+                } else {
+                    _ = File::create("/tmp/history.txt");
+                    "/tmp/history.txt".into()
+                };
+
                 if let Some(file_name) = args_iter.next() {
                     if history.load(Path::new(file_name)).is_err() {
                         eprintln!("Could not read history from file {file_name}");
@@ -54,8 +64,8 @@ where
                             format!("history -r {file_name}\n").as_bytes().to_owned();
                         if let Ok(mut contents) = read(file_name) {
                             new_contents.append(&mut contents);
-                            let _ = write("history.txt", new_contents);
-                            let _ = history.load(Path::new("history.txt"));
+                            let _ = write(&history_file, new_contents);
+                            let _ = history.load(Path::new(&history_file));
                         };
                         let _ = history;
                     }
@@ -93,12 +103,12 @@ where
 
                         for (i, entry) in history.iter().rev().skip(1).enumerate() {
                             if entry.starts_with("history -a") {
-                                last_append_index = Some(history.len() -2 - i);
+                                last_append_index = Some(history.len() - 2 - i);
                                 break;
                             }
                         }
 
-                        let start = last_append_index.map(|i| i+1).unwrap_or(0);
+                        let start = last_append_index.map(|i| i + 1).unwrap_or(0);
 
                         let mut new_entries = Vec::new();
 
@@ -115,9 +125,8 @@ where
                             }
                             _ = file.write_all(entry.as_bytes());
                             _ = file.write_all(b"\n");
-                            written =true;
+                            written = true;
                         }
-
 
                         if written {
                             _ = file.write_all(format!("history -a {}\n", file_name).as_bytes());
