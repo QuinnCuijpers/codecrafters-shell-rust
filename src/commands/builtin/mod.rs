@@ -11,12 +11,26 @@ pub(crate) use invoke::invoke_builtin;
 pub const BUILTIN_COMMANDS: [&str; 6] = ["echo", "exit", "type", "pwd", "cd", "history"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Enum representing the commmands built into this shell
 pub enum Builtin {
+    /// Print arguments to stdout
     Echo,
+    /// Exit the shell
     Exit,
+    /// Display whether a command is builtin or where it is located on $PATH
     Tipe,
+    /// Print working directory
     Pwd,
+    /// Change directory
     Cd,
+    /// Command for interacting with history
+    /// # Subcommands
+    ///
+    /// - `history` — print all history
+    /// - `history <n>` — print last `n` entries
+    /// - `history -r <file>` — read history
+    /// - `history -w <file>` — write history
+    /// - `history -a <file>` — append history
     History,
 }
 

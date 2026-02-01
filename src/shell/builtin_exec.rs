@@ -1,6 +1,4 @@
-use std::{
-    ffi::OsStr, iter::Peekable, process::Child,
-};
+use std::{ffi::OsStr, iter::Peekable, process::Child};
 
 use rustyline::history::FileHistory;
 

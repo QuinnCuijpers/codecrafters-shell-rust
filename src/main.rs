@@ -1,4 +1,4 @@
-use codecrafters_shell::shell::Shell;
+use clawsh::shell::Shell;
 
 fn main() -> anyhow::Result<()> {
     let mut shell = Shell::setup()?;

@@ -7,7 +7,10 @@ use std::{
 
 use rustyline::history::FileHistory;
 
-use crate::{parser::Token, shell::{pipeline, redirect}};
+use crate::{
+    parser::Token,
+    shell::{pipeline, redirect},
+};
 
 pub(crate) fn handle_external_exec<'a, S, I, J>(
     cmd_str: &str,
@@ -50,7 +53,13 @@ where
             redirect::redirect_external(&mut command, redirect_symb, token_iter)?;
         }
         Some(Token::Pipe) => {
-            pipeline::run_pipeline_external(command, prev_command, prev_command_output, token_iter, history)?;
+            pipeline::run_pipeline_external(
+                command,
+                prev_command,
+                prev_command_output,
+                token_iter,
+                history,
+            )?;
         }
         Some(t) => unreachable!("found unhandled token: {:?}", t),
     }
