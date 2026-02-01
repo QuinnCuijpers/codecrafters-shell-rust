@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Codecrafters <hello@codecrafters.io>", "Quinn Cuijpers <Quinn.Cuijpers@gmail.com"]
 edition = "2024"
 rust-version = "1.91"
+description = "A shell built in rust for codecrafters"
+repository = "https://github.com/QuinnCuijpers/clawsh"
+license = "MIT OR Apache-2.0"
+
 
 [dependencies]
 anyhow = "1.0.100"                                # error handling
