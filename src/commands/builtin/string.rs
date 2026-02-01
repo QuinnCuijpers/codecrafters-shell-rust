@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use crate::commands::{Builtin, find_exec_file};
+use std::str::FromStr;
 
 pub(crate) fn invoke_echo<I, S>(cmd_list: I) -> String
 where

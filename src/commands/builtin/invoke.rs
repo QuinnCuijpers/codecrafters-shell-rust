@@ -2,8 +2,14 @@ use std::ffi::OsStr;
 
 use rustyline::history::FileHistory;
 
-use crate::commands::{Builtin, builtin::{fs::{invoke_cd, invoke_pwd}, history::invoke_history, string::{invoke_echo, invoke_type}}};
-
+use crate::commands::{
+    Builtin,
+    builtin::{
+        fs::{invoke_cd, invoke_pwd},
+        history::invoke_history,
+        string::{invoke_echo, invoke_type},
+    },
+};
 
 pub(crate) fn invoke_builtin<I, S>(
     cmd: Builtin,

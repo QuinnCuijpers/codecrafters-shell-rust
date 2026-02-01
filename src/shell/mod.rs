@@ -1,23 +1,27 @@
-use std::{ffi::OsString, fs::{File, OpenOptions, read}, io::Write, path::Path};
+use std::{
+    ffi::OsString,
+    fs::{File, OpenOptions, read},
+    io::Write,
+    path::Path,
+};
 
 use rustyline::{CompletionType, Config, Editor, history::FileHistory};
 
 use crate::{BUILTIN_COMMANDS, TrieCompleter};
 
-
-mod repl;
 mod builtin_exec;
 mod exec;
 mod handle_command;
 mod pipeline;
 mod redirect;
+mod repl;
 
 pub(crate) use handle_command::handle_command;
 
 pub struct Shell {
     rl: Editor<TrieCompleter, FileHistory>,
     old_contents: Option<Vec<u8>>,
-    history_file: Option<OsString>
+    history_file: Option<OsString>,
 }
 
 impl Shell {
@@ -43,7 +47,11 @@ impl Shell {
             rl.load_history(&file)?;
             old_contents = Some(read(file)?);
         }
-        anyhow::Ok(Self { rl, old_contents, history_file })
+        anyhow::Ok(Self {
+            rl,
+            old_contents,
+            history_file,
+        })
     }
 
     pub fn exit(&mut self) -> anyhow::Result<()> {

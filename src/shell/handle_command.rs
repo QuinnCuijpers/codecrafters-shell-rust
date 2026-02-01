@@ -2,7 +2,11 @@ use std::{ffi::OsStr, iter::Peekable, str::FromStr as _};
 
 use rustyline::history::FileHistory;
 
-use crate::{commands::{Builtin, find_exec_file}, parser::Token, shell::{builtin_exec::handle_builtin, exec::handle_external_exec}};
+use crate::{
+    commands::{Builtin, find_exec_file},
+    parser::Token,
+    shell::{builtin_exec::handle_builtin, exec::handle_external_exec},
+};
 
 pub fn handle_command<'a, I, J, S>(
     cmd_str: &str,

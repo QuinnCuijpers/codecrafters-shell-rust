@@ -1,6 +1,11 @@
-use std::{cmp::min, collections::HashSet, fs::{File, read, write}, io::Write, path::Path};
 use rustyline::history::{FileHistory, History, SearchDirection};
-
+use std::{
+    cmp::min,
+    collections::HashSet,
+    fs::{File, read, write},
+    io::Write,
+    path::Path,
+};
 
 pub(crate) fn invoke_history(args_str: &[String], history: &mut FileHistory) -> Option<String> {
     use std::fmt::Write;

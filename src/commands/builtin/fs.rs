@@ -1,6 +1,5 @@
 use std::{env, path::PathBuf};
 
-
 pub(crate) fn invoke_pwd<I, S>(_cmd_list: I) -> anyhow::Result<String>
 where
     I: IntoIterator<Item = S>,
