@@ -37,6 +37,7 @@ impl Shell {
         let helper = TrieCompleter::with_builtin_commands(&BUILTIN_COMMANDS);
         let config = Config::builder()
             .completion_type(CompletionType::List)
+            .history_ignore_dups(false)?
             .build();
 
         let mut rl = Editor::with_config(config)?;
