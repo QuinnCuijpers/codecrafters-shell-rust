@@ -101,10 +101,10 @@ impl<const N: usize> TrieNode<N> {
         while let Some((node, curr_str)) = q.pop() {
             for (i, child) in node.children.iter().enumerate() {
                 match child {
-                    None => {},
+                    None => {}
                     Some(n) => {
                         if let Ok(val) = u8::try_from(i) {
-                            let c =  val as char;
+                            let c = val as char;
                             let new_str = format!("{curr_str}{c}");
                             q.push((n.as_ref(), new_str));
                         }

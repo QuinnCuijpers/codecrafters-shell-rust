@@ -4,13 +4,19 @@ use std::{
     io::Write,
     iter::Peekable,
     path::PathBuf,
-    process::{Child, Command, Stdio}, str::FromStr,
+    process::{Child, Command, Stdio},
+    str::FromStr,
 };
 
 use anyhow::Result;
 use rustyline::history::FileHistory;
 
-use crate::{commands::Builtin, invoke::invoke_builtin, parser::{Token, parse_input}, util::find_exec_file};
+use crate::{
+    commands::Builtin,
+    commands::find_exec_file,
+    invoke::invoke_builtin,
+    parser::{Token, split_words},
+};
 
 pub fn handle_command<'a, I, J, S>(
     cmd_str: &str,
@@ -108,7 +114,7 @@ where
             let mut child = command.spawn()?;
             child.wait()?;
         }
-        Some(Token::Pipe(_)) => {
+        Some(Token::Pipe) => {
             command.stdout(Stdio::piped());
 
             if let Some(prev) = prev_command
@@ -185,7 +191,7 @@ where
         .collect();
 
     if let Some(out) = prev_command_output {
-        let extra_args = parse_input(&out);
+        let extra_args = split_words(&out);
         all_args.extend(extra_args);
     }
 
@@ -248,7 +254,7 @@ where
                 _ => unreachable!(),
             }
         }
-        Some(Token::Pipe(_t)) => {
+        Some(Token::Pipe) => {
             let Some(Token::Command(cmd)) = token_iter.next() else {
                 anyhow::bail!("Piped into nothing");
             };

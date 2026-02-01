@@ -1,6 +1,5 @@
-
 #[must_use]
-pub fn parse_input(input: &str) -> Vec<String> {
+pub fn split_words(input: &str) -> Vec<String> {
     let mut command_list: Vec<String> = vec![];
     let mut buf = String::new();
     let mut in_single_quotes = false;
@@ -32,7 +31,7 @@ pub fn parse_input(input: &str) -> Vec<String> {
                 if in_double_quotes && let Some(&c) = chars.peek() {
                     // unwrap safe as the peek returns Some
                     match c {
-                        '\"'| '\\' => buf.push(chars.next().unwrap()),
+                        '\"' | '\\' => buf.push(chars.next().unwrap()),
                         _ => buf.push('\\'),
                     }
                 }

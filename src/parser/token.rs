@@ -1,12 +1,9 @@
-
-
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Command(String),
     Redirect(String),
     Arg(String),
-    Pipe(String), //TODO: may not require to hold data as only one character creates this
+    Pipe,
 }
 
 #[must_use]
@@ -25,7 +22,7 @@ pub fn tokenize_input(input: Vec<String>) -> Option<Vec<Token>> {
             ">" | "1>" | "2>" | ">>" | "1>>" | "2>>" => tokenized.push(Token::Redirect(s)),
             "|" => {
                 new_command = true;
-                tokenized.push(Token::Pipe(s));
+                tokenized.push(Token::Pipe);
             }
             _ => {
                 if new_command {

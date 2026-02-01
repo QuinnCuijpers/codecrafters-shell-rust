@@ -1,8 +1,7 @@
-use faccess::PathExt;
-use rustyline::{Helper, Highlighter, Hinter, Validator};
-use rustyline::completion::Completer;
-use crate::util::start_of_last_word;
 use crate::commands::BUILTIN_COMMANDS;
+use faccess::PathExt;
+use rustyline::completion::Completer;
+use rustyline::{Helper, Highlighter, Hinter, Validator};
 
 use crate::completion::trie::{TRIE_ASCII_SIZE, TrieNode};
 
@@ -65,7 +64,8 @@ impl Completer for TrieCompleter {
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
         let mut candidates = self.builtin_trie.auto_complete(line).unwrap_or(vec![]);
 
-        let mut external_candidates = TrieCompleter::get_external_candidates(line).unwrap_or(vec![]);
+        let mut external_candidates =
+            TrieCompleter::get_external_candidates(line).unwrap_or(vec![]);
 
         candidates.append(&mut external_candidates);
 
@@ -88,4 +88,18 @@ impl Completer for TrieCompleter {
         let end = line.pos();
         line.replace(start..end, elected, cl);
     }
+}
+
+fn start_of_last_word(s: &str, mut pos: usize) -> usize {
+    let bytes = s.as_bytes();
+
+    while pos > 0 && bytes[pos] == b' ' {
+        pos -= 1;
+    }
+
+    while pos > 0 && bytes[pos] != b' ' {
+        pos -= 1;
+    }
+
+    if bytes[pos] == b' ' { pos + 1 } else { pos }
 }

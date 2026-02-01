@@ -1,4 +1,5 @@
-use crate::{commands::Builtin, util::find_exec_file};
+use crate::commands::Builtin;
+use crate::commands::find_exec_file;
 use anyhow::Result;
 use rustyline::history::{FileHistory, History, SearchDirection};
 use std::{
@@ -9,7 +10,7 @@ use std::{
     fs::{File, read, write},
     io::Write,
     path::{Path, PathBuf},
-    str::FromStr as _
+    str::FromStr as _,
 };
 
 pub(crate) fn invoke_builtin<I, S>(
@@ -34,8 +35,7 @@ where
     }
 }
 
-fn invoke_history(args_str: &[String], history: &mut FileHistory) -> Option<String>
-{
+fn invoke_history(args_str: &[String], history: &mut FileHistory) -> Option<String> {
     use std::fmt::Write;
     let mut args_iter = args_str.iter();
     let length = if let Some(arg) = args_iter.next() {
@@ -136,7 +136,10 @@ fn invoke_history_append(history: &mut FileHistory, mut args_iter: std::slice::I
     }
 }
 
-fn invoke_history_read_file(history: &mut FileHistory, args_iter: &mut std::slice::Iter<'_, String>) {
+fn invoke_history_read_file(
+    history: &mut FileHistory,
+    args_iter: &mut std::slice::Iter<'_, String>,
+) {
     let env_file = std::env::var_os("HISTFILE");
 
     let history_file = if let Some(file_name) = env_file {
@@ -151,8 +154,7 @@ fn invoke_history_read_file(history: &mut FileHistory, args_iter: &mut std::slic
         if history.load(Path::new(file_name)).is_err() {
             eprintln!("Could not read history from file {file_name}");
         } else {
-            let mut new_contents =
-                format!("history -r {file_name}\n").as_bytes().to_owned();
+            let mut new_contents = format!("history -r {file_name}\n").as_bytes().to_owned();
             if let Ok(mut contents) = read(file_name) {
                 new_contents.append(&mut contents);
                 let _ = write(&history_file, new_contents);

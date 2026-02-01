@@ -1,6 +1,6 @@
-pub mod words;
 mod token;
+pub mod words;
 
 pub use token::Token;
-pub use words::parse_input;
 pub use token::tokenize_input;
+pub use words::split_words;
