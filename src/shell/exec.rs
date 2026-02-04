@@ -31,16 +31,23 @@ where
         None => {
             if prev_command_output.is_some() {
                 command.stdin(Stdio::piped());
-            } else if let Some(prev) = prev_command
-                && prev.stdout.is_some()
-            {
-                command.stdin(prev.stdout.take().unwrap());
+            } else if prev_command.is_some() {
+                match prev_command.and_then(|p| p.stdout.take()) {
+                    Some(stdout) => {
+                        command.stdin(stdout);
+                    }
+                    None => anyhow::bail!("expected previous command to have piped stdout"),
+                }
             }
 
             let mut child = command.spawn()?;
 
+            #[allow(clippy::expect_used)]
             if let Some(prev) = prev_command_output {
-                let mut stdin = child.stdin.take().unwrap();
+                let mut stdin = child
+                    .stdin
+                    .take()
+                    .expect("stdin is set by the previous if-else");
                 stdin.write_all(prev.as_bytes())?;
             }
 

@@ -35,6 +35,7 @@ pub(crate) fn invoke_history(args_str: &[String], history: &mut FileHistory) -> 
     let mut buf = String::new();
     for i in 0..length {
         let entry_idx = history.len() - length + i;
+        #[allow(clippy::expect_used)]
         let search_result = history
             .get(entry_idx, SearchDirection::Reverse)
             .expect("Rustyline implementation of get on HistoryFile can not error");

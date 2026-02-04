@@ -7,12 +7,14 @@ pub enum Token {
 }
 
 #[must_use]
+#[allow(clippy::missing_panics_doc)]
 pub fn tokenize_input(input: Vec<String>) -> Option<Vec<Token>> {
     if input.is_empty() {
         return None;
     }
     let mut tokenized = vec![];
     let mut iter = input.into_iter();
+    #[allow(clippy::expect_used)]
     tokenized.push(Token::Command(
         iter.next()
             .expect("first String always exists by the above if case"),

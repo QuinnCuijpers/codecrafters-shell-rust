@@ -61,10 +61,12 @@ impl<const N: usize> TrieNode<N> {
             {
                 child.set_end_node();
             }
-            //
-            x = x.children[idx]
+            #[allow(clippy::expect_used)]
+            let child = x.children[idx]
                 .as_deref_mut()
                 .expect("by prev if statement this value is always set");
+
+            x = child;
         }
     }
 

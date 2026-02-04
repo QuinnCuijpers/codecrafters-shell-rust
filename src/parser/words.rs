@@ -1,4 +1,5 @@
 #[must_use]
+#[allow(clippy::missing_panics_doc)]
 pub fn split_words(input: &str) -> Vec<String> {
     let mut command_list: Vec<String> = vec![];
     let mut buf = String::new();
@@ -31,7 +32,8 @@ pub fn split_words(input: &str) -> Vec<String> {
                 if in_double_quotes && let Some(&c) = chars.peek() {
                     match c {
                         '\"' | '\\' => {
-                            buf.push(chars.next().expect("safe as the peek returns Some"))
+                            #[allow(clippy::expect_used)]
+                            buf.push(chars.next().expect("safe as the peek returns Some"));
                         }
                         _ => buf.push('\\'),
                     }

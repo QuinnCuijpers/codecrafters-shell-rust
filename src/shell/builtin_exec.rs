@@ -20,7 +20,7 @@ where
     I: Iterator<Item = &'a Token>,
 {
     let mut all_args = vec![];
-    for s in args.into_iter() {
+    for s in args {
         all_args.push(s.clone());
     }
 

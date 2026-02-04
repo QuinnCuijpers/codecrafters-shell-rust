@@ -10,9 +10,6 @@ pub enum CompletionError {
 
 impl From<CompletionError> for rustyline::error::ReadlineError {
     fn from(value: CompletionError) -> Self {
-        return rustyline::error::ReadlineError::Io(io::Error::new(
-            std::io::ErrorKind::Other,
-            value.to_string(),
-        ));
+        rustyline::error::ReadlineError::Io(io::Error::other(value.to_string()))
     }
 }
