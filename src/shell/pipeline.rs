@@ -79,7 +79,10 @@ where
     let mut child = command.spawn()?;
 
     if let Some(prev) = prev_command_output {
-        let mut stdin = child.stdin.take().unwrap();
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("child stdin was not piped"))?;
         stdin.write_all(prev.as_bytes())?;
         drop(stdin);
     }
