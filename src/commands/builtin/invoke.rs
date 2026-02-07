@@ -7,13 +7,14 @@ use crate::commands::{
         history::invoke_history,
         string::{invoke_echo, invoke_type},
     },
+    error::CommandsError,
 };
 
 pub(crate) fn invoke_builtin(
     cmd: Builtin,
     args: &[String],
     history: &mut FileHistory,
-) -> anyhow::Result<Option<String>> {
+) -> Result<Option<String>, CommandsError> {
     match cmd {
         Builtin::Echo => Ok(Some(invoke_echo(args))),
         Builtin::Exit => unreachable!(), // unreachable as we check for exit in main beforehand

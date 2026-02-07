@@ -1,22 +1,30 @@
 use std::io::{self, Write};
 
-use anyhow::Context;
 use rustyline::error::ReadlineError;
 
 use crate::{
     parser::{Token, split_words, tokenize_input},
-    shell::{Shell, handle_command},
+    shell::{Shell, error::ShellError, handle_command},
 };
 
 impl Shell {
-    pub fn run(&mut self) -> anyhow::Result<()> {
+    #[allow(clippy::missing_panics_doc)]
+    pub fn run(&mut self) {
         loop {
             let readline = self.rl.readline("$ ");
-            io::stdout().flush().context("flushing stdout")?;
+            match io::stdout().flush() {
+                Ok(()) => {}
+                Err(e) => {
+                    let err = ShellError::FailedStdoutFlush(e);
+                    eprintln!("{err}");
+                }
+            }
 
             let input = match readline {
                 Ok(line) => {
-                    self.rl.add_history_entry(line.as_str())?;
+                    #[allow(clippy::expect_used)]
+                    self.rl.add_history_entry(line.as_str())
+                    .expect("`add_history_entry` cannot error for filehistory due to how the trait function is implemented by rusytline");
                     line
                 }
                 Err(ReadlineError::Interrupted) => {
@@ -62,8 +70,10 @@ impl Shell {
             // }
 
             let history = self.rl.history_mut();
-            handle_command(cmd_str, &args, &mut token_iter, history)?;
+            match handle_command(cmd_str, &args, &mut token_iter, history) {
+                Ok(()) => {}
+                Err(e) => eprintln!("{e}"),
+            }
         }
-        anyhow::Ok(())
     }
 }

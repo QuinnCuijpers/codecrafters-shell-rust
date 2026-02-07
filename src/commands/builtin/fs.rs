@@ -2,7 +2,7 @@ use std::{env, path::PathBuf};
 
 use crate::commands::error::CommandsError;
 
-pub(crate) fn invoke_pwd(_cmd_list: &[String]) -> anyhow::Result<String> {
+pub(crate) fn invoke_pwd(_cmd_list: &[String]) -> Result<String, CommandsError> {
     let curr = match env::current_dir() {
         Ok(path) => path,
         Err(e) => return Err(CommandsError::InvalidCurrentDirectory(e))?,
@@ -10,7 +10,7 @@ pub(crate) fn invoke_pwd(_cmd_list: &[String]) -> anyhow::Result<String> {
     Ok(format!("{}\n", curr.display()))
 }
 
-pub(crate) fn invoke_cd(cmd_list: &[String]) -> anyhow::Result<Option<String>> {
+pub(crate) fn invoke_cd(cmd_list: &[String]) -> Result<Option<String>, CommandsError> {
     let cmd_list: Vec<_> = cmd_list.iter().collect();
     if cmd_list.is_empty() {
         return Ok(None);

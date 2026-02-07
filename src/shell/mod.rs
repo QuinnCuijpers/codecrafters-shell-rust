@@ -10,6 +10,7 @@ use rustyline::{CompletionType, Config, Editor, history::FileHistory};
 use crate::{BUILTIN_COMMANDS, TrieCompleter};
 
 mod builtin_exec;
+mod error;
 mod exec;
 mod handle_command;
 mod pipeline;
