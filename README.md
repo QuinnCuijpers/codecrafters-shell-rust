@@ -64,7 +64,7 @@ $> history -a ~/.clawsh_history
 
 ## Roadmap
 
-- [x] reduce size of SHellError enum by using more specific error types
+- [x] add unit tests and integration tests based on codecrafters test suite
 - [x] add docs
 - [x] implement more builtin commands when codecrafters updates their course
 
