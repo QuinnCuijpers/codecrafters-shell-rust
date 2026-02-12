@@ -8,7 +8,7 @@ use rustyline::history::FileHistory;
 
 use crate::{
     parser::Token,
-    shell::{Shell, error::ShellError, pipeline, redirect},
+    shell::{error::ShellError, pipeline, redirect},
 };
 
 pub(crate) fn handle_external_exec<'a, I>(

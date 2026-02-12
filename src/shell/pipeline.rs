@@ -10,7 +10,7 @@ use rustyline::history::FileHistory;
 use crate::{
     commands::Builtin,
     parser::Token,
-    shell::{Shell, builtin_exec, error::ShellError, exec},
+    shell::{builtin_exec, error::ShellError, exec},
 };
 
 pub(crate) fn run_pipeline_builtin<'a, I>(
@@ -89,7 +89,7 @@ where
         let mut stdin = child
             .stdin
             .take()
-            .ok_or_else(|| ShellError::ChildStdinNotPiped(command))?;
+            .ok_or_else(|| ShellError::ChildStdinNotPiped(Box::new(command)))?;
         match stdin.write_all(prev.as_bytes()) {
             Ok(()) => drop(stdin),
             Err(e) => return Err(ShellError::WriteStdinFailure(prev, stdin, e))?,

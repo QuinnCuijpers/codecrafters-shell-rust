@@ -1,8 +1,8 @@
-use clawsh::shell::Shell;
+use clawsh::shell::{ClawshError, Shell};
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), ClawshError> {
     let mut shell = Shell::setup()?;
     shell.run();
-    // TODO: handle errors for exiting
-    shell.exit()
+    shell.exit()?;
+    Ok(())
 }

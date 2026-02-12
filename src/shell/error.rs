@@ -30,7 +30,7 @@ pub enum ShellError {
     #[error("Failed to write {0} into {1:?} due to {2}")]
     WriteFileFailure(String, PathBuf, #[source] io::Error),
     #[error("Child stdin was not piped before command {0:?}")]
-    ChildStdinNotPiped(Command),
+    ChildStdinNotPiped(Box<Command>),
     #[error("Failed to take stdout of previous command for piping into next command")]
     FailedToTakeStdout,
     #[error("Attempted to redirect into {0:?}")]

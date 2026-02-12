@@ -1,11 +1,12 @@
 use std::{
     ffi::OsString,
     fs::{File, OpenOptions, read},
-    io::Write,
+    io::{self, Write},
     path::Path,
 };
 
-use rustyline::{CompletionType, Config, Editor, history::FileHistory};
+use rustyline::{CompletionType, Config, Editor, error::ReadlineError, history::FileHistory};
+use thiserror::Error;
 
 use crate::{BUILTIN_COMMANDS, TrieCompleter};
 
@@ -19,6 +20,30 @@ mod repl;
 
 pub(crate) use handle_command::handle_command;
 
+#[derive(Debug, Error)]
+pub enum ClawshError {
+    #[error("Error during setup: {0}")]
+    SetupError(#[from] ClawshSetupError),
+    #[error("Error when exiting: {0}")]
+    ExitError(#[from] ClawshExitError),
+}
+
+#[derive(Debug, Error)]
+pub enum ClawshSetupError {
+    #[error("Failed to create file {0:?} due to: {1}")]
+    FailedToCreateHistFile(OsString, #[source] io::Error),
+    #[error("Failed to read from file {0:?} due to {1}")]
+    FailedToReadHistFile(OsString, #[source] io::Error),
+    #[error("Failed to create an editor due to: {0}")]
+    FailedToCreateEditor(#[from] ReadlineError),
+}
+
+#[derive(Debug, Error)]
+pub enum ClawshExitError {
+    #[error("Failed to open file {0:?} to write history to, due to: {1}")]
+    CouldNotOpenHistFile(OsString, #[source] io::Error),
+}
+
 pub struct Shell {
     rl: Editor<TrieCompleter, FileHistory>,
     old_contents: Option<Vec<u8>>,
@@ -26,42 +51,51 @@ pub struct Shell {
 }
 
 impl Shell {
-    pub fn setup() -> anyhow::Result<Self> {
+    #[allow(clippy::missing_panics_doc)]
+    pub fn setup() -> Result<Self, ClawshSetupError> {
         let history_file = std::env::var_os("HISTFILE");
 
         if let Some(file_name) = history_file.as_ref()
             && !Path::new(&file_name).exists()
         {
-            File::create(file_name)?;
+            File::create(file_name)
+                .map_err(|e| ClawshSetupError::FailedToCreateHistFile(file_name.clone(), e))?;
         }
 
         let helper = TrieCompleter::with_builtin_commands(&BUILTIN_COMMANDS);
+        #[allow(clippy::expect_used)]
         let config = Config::builder()
             .completion_type(CompletionType::List)
-            .history_ignore_dups(false)?
+            .history_ignore_dups(false)
+            .expect("Rustyline's implementation cannot err")
             .build();
 
-        let mut rl = Editor::with_config(config)?;
+        let mut rl = Editor::with_config(config).map_err(ClawshSetupError::FailedToCreateEditor)?;
         rl.set_helper(Some(helper));
 
         let mut old_contents = None;
         if let Some(file) = history_file.as_ref() {
-            rl.load_history(&file)?;
-            old_contents = Some(read(file)?);
+            #[allow(clippy::expect_used)]
+            rl.load_history(&file)
+                .expect("Rustyline implementation cannot Error");
+            old_contents = Some(
+                read(file).map_err(|e| ClawshSetupError::FailedToReadHistFile(file.clone(), e))?,
+            );
         }
-        anyhow::Ok(Self {
+        Ok(Self {
             rl,
             old_contents,
             history_file,
         })
     }
 
-    pub fn exit(&mut self) -> anyhow::Result<()> {
+    pub fn exit(&mut self) -> Result<(), ClawshExitError> {
         if let Some(history_file) = self.history_file.as_ref() {
             let mut file = OpenOptions::new()
                 .append(true)
                 .create(true)
-                .open(history_file)?;
+                .open(history_file)
+                .map_err(|e| ClawshExitError::CouldNotOpenHistFile(history_file.clone(), e))?;
             let mut new_contents = vec![];
             for entry in self.rl.history() {
                 let mut new_entry = entry.clone();
@@ -78,6 +112,6 @@ impl Shell {
 
             _ = file.write_all(&new_contents);
         }
-        anyhow::Ok(())
+        Ok(())
     }
 }

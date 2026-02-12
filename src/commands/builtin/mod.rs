@@ -3,8 +3,8 @@ mod history;
 mod invoke;
 mod string;
 
-use anyhow::Result;
 use std::str::FromStr;
+use thiserror::Error;
 
 pub(crate) use invoke::invoke_builtin;
 
@@ -34,8 +34,14 @@ pub enum Builtin {
     History,
 }
 
+#[derive(Debug, Error, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FromStrError {
+    #[error("Unknown builtin {0}")]
+    UnknownBuiltin(String),
+}
+
 impl FromStr for Builtin {
-    type Err = anyhow::Error;
+    type Err = FromStrError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -45,8 +51,7 @@ impl FromStr for Builtin {
             "pwd" => Ok(Builtin::Pwd),
             "cd" => Ok(Builtin::Cd),
             "history" => Ok(Builtin::History),
-            // TODO: remove anyhow dependency here
-            _ => Err(anyhow::anyhow!(format!("unknown builtin {s}"))),
+            _ => Err(FromStrError::UnknownBuiltin(s.to_string())),
         }
     }
 }
