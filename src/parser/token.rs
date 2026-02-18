@@ -8,6 +8,8 @@ pub enum Token {
 
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
+// design wise we decided to have this function return an owned vec instead of an iterator
+// as the vec will always be small enough
 pub fn tokenize_input(input: Vec<String>) -> Option<Vec<Token>> {
     if input.is_empty() {
         return None;

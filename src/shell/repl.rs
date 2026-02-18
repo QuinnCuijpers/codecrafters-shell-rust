@@ -47,12 +47,12 @@ impl Shell {
             let Some(tokens) = tokenize_input(command_list) else {
                 continue;
             };
-            // eprintln!("{:?}", tokens);
             let mut token_iter = tokens.iter().peekable();
 
             let Some(Token::Command(cmd_str)) = token_iter.next() else {
-                // TODO: consider adding error or eprintln for this
-                continue;
+                // this path should be unreachable as the first token is always a command token.
+                // if the input was empty then `tokenize_input` would have returned None already
+                unreachable!();
             };
 
             if cmd_str == "exit" {
@@ -64,10 +64,6 @@ impl Shell {
                 args.push(s.clone());
                 token_iter.next();
             }
-
-            // for s in rl.history() {
-            //     println!("{s}");
-            // }
 
             let history = self.rl.history_mut();
             match handle_command(cmd_str, &args, &mut token_iter, history) {
