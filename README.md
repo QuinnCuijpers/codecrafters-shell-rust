@@ -65,7 +65,7 @@ $> history -a ~/.clawsh_history
 ## Roadmap
 
 - [] add unit tests and integration tests based on codecrafters test suite
-- [] add docs
+- [x] add docs
 - [] implement more builtin commands when codecrafters updates their course
 
 ---
