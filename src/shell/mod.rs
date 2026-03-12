@@ -38,13 +38,13 @@ pub enum ClawshError {
 pub enum ClawshSetupError {
     #[error("Failed to create file {0:?} due to: {1}")]
     /// Error when creating the history file specified by `HISTFILE` environment variable, including the file name and the underlying I/O error
-    FailedToCreateHistFile(OsString, #[source] io::Error),
+    CreateHistFile(OsString, #[source] io::Error),
     #[error("Failed to read from file {0:?} due to {1}")]
     /// Error when reading the history file specified by `HISTFILE` environment variable, including the file name and the underlying I/O error
-    FailedToReadHistFile(OsString, #[source] io::Error),
+    ReadHistFile(OsString, #[source] io::Error),
     #[error("Failed to create an editor due to: {0}")]
     /// Error when creating the `rustyline::Editor` for the REPL, including the underlying error from `rustyline`
-    FailedToCreateEditor(#[from] ReadlineError),
+    CreateEditor(#[from] ReadlineError),
 }
 
 #[derive(Debug, Error)]
@@ -81,9 +81,9 @@ impl Shell {
     /// Setup a new `Shell` instance
     ///
     /// # Errors
-    /// - `ClawshSetupError::FailedToCreateHistFile` if the history file specified by `HISTFILE` environment variable does not exist and cannot be created
-    /// - `ClawshSetupError::FailedToReadHistFile` if the history file specified by `HISTFILE` environment variable cannot be read
-    /// - `ClawshSetupError::FailedToCreateEditor` if the `rustyline::Editor` cannot be created for the REPL
+    /// - `ClawshSetupError::CreateHistFile` if the history file specified by `HISTFILE` environment variable does not exist and cannot be created
+    /// - `ClawshSetupError::ReadHistFile` if the history file specified by `HISTFILE` environment variable cannot be read
+    /// - `ClawshSetupError::CreateEditor` if the `rustyline::Editor` cannot be created for the REPL
     ///
     pub fn setup() -> Result<Self, ClawshSetupError> {
         let history_file = std::env::var_os("HISTFILE");
@@ -92,7 +92,7 @@ impl Shell {
             && !Path::new(&file_name).exists()
         {
             File::create(file_name)
-                .map_err(|e| ClawshSetupError::FailedToCreateHistFile(file_name.clone(), e))?;
+                .map_err(|e| ClawshSetupError::CreateHistFile(file_name.clone(), e))?;
         }
 
         let helper = TrieCompleter::with_builtin_commands(&BUILTIN_COMMANDS);
@@ -103,7 +103,7 @@ impl Shell {
             .expect("Rustyline's implementation cannot err")
             .build();
 
-        let mut rl = Editor::with_config(config).map_err(ClawshSetupError::FailedToCreateEditor)?;
+        let mut rl = Editor::with_config(config).map_err(ClawshSetupError::CreateEditor)?;
         rl.set_helper(Some(helper));
 
         let mut old_contents = None;
@@ -111,9 +111,8 @@ impl Shell {
             #[allow(clippy::expect_used)]
             rl.load_history(&file)
                 .expect("Rustyline implementation cannot Error");
-            old_contents = Some(
-                read(file).map_err(|e| ClawshSetupError::FailedToReadHistFile(file.clone(), e))?,
-            );
+            old_contents =
+                Some(read(file).map_err(|e| ClawshSetupError::ReadHistFile(file.clone(), e))?);
         }
         Ok(Self {
             rl,
