@@ -8,6 +8,7 @@ use thiserror::Error;
 
 pub(crate) use invoke::invoke_builtin;
 
+/// Constant array of the names of the built-in commands, used for autocompletion and `type` command
 pub const BUILTIN_COMMANDS: [&str; 6] = ["echo", "exit", "type", "pwd", "cd", "history"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

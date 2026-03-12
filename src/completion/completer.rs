@@ -7,12 +7,14 @@ use rustyline::{Helper, Highlighter, Hinter, Validator};
 use crate::completion::trie::{TRIE_ASCII_SIZE, TrieNode};
 
 #[derive(Debug, Helper, Highlighter, Validator, Hinter)]
+/// Trie-based completer implementing `rustyline::completion::Completer` for autocompletion of built-in commands and external commands on $PATH
 pub struct TrieCompleter {
     builtin_trie: TrieNode<TRIE_ASCII_SIZE>,
 }
 
 impl TrieCompleter {
     #[must_use]
+    /// Create a new `TrieCompleter` with the given built-in command words inserted into the trie for autocompletion
     pub fn with_builtin_commands(builtin_words: &[&str]) -> Self {
         let mut builtin_trie = TrieNode::new();
         for word in builtin_words {
@@ -21,10 +23,11 @@ impl TrieCompleter {
 
         Self { builtin_trie }
     }
-
-    pub(crate) fn get_external_candidates(
-        prefix: &str,
-    ) -> Result<Option<Vec<String>>, CompletionError> {
+    /// Add external commands on $PATH to the trie for autocompletion, returning a vector of candidates matching the given prefix
+    ///
+    /// # Errors
+    /// - `CompletionError::PathNotSet` if the `PATH` environment variable is not set
+    pub fn get_external_candidates(prefix: &str) -> Result<Option<Vec<String>>, CompletionError> {
         let Some(env_path) = std::env::var_os("PATH") else {
             return Err(CompletionError::PathNotSet)?;
         };

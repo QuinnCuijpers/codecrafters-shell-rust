@@ -9,6 +9,8 @@ use crate::{
 
 impl Shell {
     #[allow(clippy::missing_panics_doc)]
+    /// Main REPL loop for the shell, continuously reading user input, parsing it, and executing commands until an exit condition is met (e.g. `exit` command, EOF, or interrupt)
+    /// internal errors during command handling are printed to stderr but do not exit the shell
     pub fn run(&mut self) {
         loop {
             let readline = self.rl.readline("$ ");

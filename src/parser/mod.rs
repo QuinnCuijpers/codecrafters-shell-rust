@@ -1,6 +1,6 @@
 mod token;
-pub mod words;
+mod words;
 
 pub use token::Token;
 pub use token::tokenize_input;
-pub use words::split_words;
+pub(crate) use words::split_words;

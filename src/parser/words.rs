@@ -1,6 +1,6 @@
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
-pub fn split_words(input: &str) -> Vec<String> {
+pub(crate) fn split_words(input: &str) -> Vec<String> {
     let mut command_list: Vec<String> = vec![];
     let mut buf = String::new();
     let mut in_single_quotes = false;
