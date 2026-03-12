@@ -1,6 +1,6 @@
 [package]
 name = "clawsh"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
     "Codecrafters <hello@codecrafters.io>",
     "Quinn Cuijpers <Quinn.Cuijpers@gmail.com>",
