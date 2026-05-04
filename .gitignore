@@ -10,5 +10,5 @@ target/
 *.pdb
 
 history.txt
-test.txt
+test*
 TODO.md
