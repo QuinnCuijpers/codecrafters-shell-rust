@@ -7,6 +7,7 @@ use rustyline::{Helper, Highlighter, Hinter, Validator};
 use crate::completion::trie::{TRIE_ASCII_SIZE, TrieNode};
 
 #[derive(Debug, Helper, Highlighter, Validator, Hinter)]
+// TODO: add doc tests for `TrieCompleter` and additional explanation of how it works and how to use it
 /// Trie-based completer implementing `rustyline::completion::Completer` for autocompletion of built-in commands and external commands on $PATH
 pub struct TrieCompleter {
     builtin_trie: TrieNode<TRIE_ASCII_SIZE>,
@@ -31,8 +32,26 @@ impl TrieCompleter {
         let Some(env_path) = std::env::var_os("PATH") else {
             return Err(CompletionError::PathNotSet)?;
         };
-
         let mut external_trie: TrieNode<TRIE_ASCII_SIZE> = TrieNode::new();
+
+        // add current directory files to trie
+        if let Ok(current_dir) = std::env::current_dir()
+            && let Ok(dir) = current_dir.read_dir()
+        {
+            for entry in dir.flatten() {
+                let file_path = entry.path();
+                let file_name = entry.file_name();
+                let name_str = file_name.to_str();
+                let Some(name_str) = name_str else {
+                    continue;
+                };
+                if name_str.starts_with(prefix) && file_path.exists() {
+                    external_trie.insert(name_str);
+                }
+            }
+        }
+
+        // add executable files in path to trie
         for path in std::env::split_paths(&env_path) {
             if let Ok(exists) = path.try_exists() {
                 if !exists {
@@ -69,9 +88,10 @@ impl Completer for TrieCompleter {
         pos: usize,
         _ctx: &rustyline::Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-        let mut candidates = self.builtin_trie.auto_complete(line).unwrap_or(vec![]);
+        let prefix = line.split(' ').next_back().unwrap_or("");
+        let mut candidates = self.builtin_trie.auto_complete(prefix).unwrap_or(vec![]);
 
-        let mut external_candidates = TrieCompleter::get_external_candidates(line)
+        let mut external_candidates = TrieCompleter::get_external_candidates(prefix)
             .map_err(rustyline::error::ReadlineError::from)?
             .unwrap_or(vec![]);
 
