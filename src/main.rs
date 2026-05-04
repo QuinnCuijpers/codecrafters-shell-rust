@@ -1,3 +1,4 @@
+//! Entrypoint for the clawsh shell.
 use clawsh::Shell;
 
 fn main() -> clawsh::Result<()> {

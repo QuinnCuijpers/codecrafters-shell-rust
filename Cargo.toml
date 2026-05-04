@@ -14,14 +14,18 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 faccess = "0.2.4"
-rustyline = { version = "17.0.1", features = ["derive", "with-file-history"] }
+rustyline = { version = "18.0.0", features = ["derive", "with-file-history"] }
 thiserror = "2.0.18"                                                           # error handling
 
+[lints.rust]
+missing_docs = "warn"
+
+
 [lints.clippy]
+all = "warn"
 pedantic = "warn"
 unwrap_used = "warn"
 expect_used = "warn"
-missing_docs = "warn"
 
 [[bin]]
 name = "clawsh"

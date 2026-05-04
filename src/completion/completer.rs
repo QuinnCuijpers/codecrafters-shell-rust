@@ -35,18 +35,28 @@ impl TrieCompleter {
         let mut external_trie: TrieNode<TRIE_ASCII_SIZE> = TrieNode::new();
 
         // add current directory files to trie
-        if let Ok(current_dir) = std::env::current_dir()
-            && let Ok(dir) = current_dir.read_dir()
-        {
-            for entry in dir.flatten() {
-                let file_path = entry.path();
-                let file_name = entry.file_name();
-                let name_str = file_name.to_str();
-                let Some(name_str) = name_str else {
-                    continue;
-                };
-                if name_str.starts_with(prefix) && file_path.exists() {
-                    external_trie.insert(name_str);
+        if let Ok(current_dir) = std::env::current_dir() {
+            let split = prefix.rsplitn(2, '/').collect::<Vec<_>>();
+            let prefix = split[0];
+            let search_dir_str = split.get(1).unwrap_or(&"").to_string();
+            let search_dir = current_dir.join(&search_dir_str);
+
+            if let Ok(search_dir) = search_dir.read_dir() {
+                for entry in search_dir.flatten() {
+                    let file_path = entry.path();
+                    let file_name = entry.file_name();
+                    let name_str = file_name.to_str();
+                    let Some(name_str) = name_str else {
+                        continue;
+                    };
+                    if name_str.starts_with(prefix) && file_path.exists() {
+                        if search_dir_str.is_empty() {
+                            external_trie.insert(name_str);
+                            continue;
+                        }
+                        let name_str = search_dir_str.clone() + "/" + name_str;
+                        external_trie.insert(&name_str);
+                    }
                 }
             }
         }
