@@ -25,6 +25,7 @@ Originally built as a Codecrafters challenge, it has grown and popped it's shell
 - Redirections (`>`, `>>`, `2>`, `2>>`)
 - External command execution
 - Persistent history with append/read/write modes
+- Tab completion for builtins, external commands, and paths
 
 ---
 
@@ -64,9 +65,10 @@ $> history -a ~/.clawsh_history
 
 ## Roadmap
 
-- [] add unit tests and integration tests based on codecrafters test suite
 - [x] add docs
-- [] implement more builtin commands when codecrafters updates their course
+- [x] implement more builtin commands when codecrafters updates their course
+- [x] refactor the completer
+- [ ] add jobs support
 
 ---
 

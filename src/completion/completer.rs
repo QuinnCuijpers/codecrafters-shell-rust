@@ -10,49 +10,23 @@ use crate::completion::trie::{TRIE_ASCII_SIZE, TrieNode};
 // TODO: add doc tests for `TrieCompleter` and additional explanation of how it works and how to use it
 /// Trie-based completer implementing `rustyline::completion::Completer` for autocompletion of built-in commands and external commands on $PATH
 pub struct TrieCompleter {
-    builtin_trie: TrieNode<TRIE_ASCII_SIZE>,
+    builtin: TrieNode<TRIE_ASCII_SIZE>,
 }
 
 impl TrieCompleter {
     #[must_use]
     /// Create a new `TrieCompleter` with the given built-in command words inserted into the trie for autocompletion
     pub fn with_builtin_commands(builtin_words: &[&str]) -> Self {
-        let mut builtin_trie = TrieNode::new();
+        let mut builtin = TrieNode::new();
         for word in builtin_words {
-            builtin_trie.insert(word);
+            builtin.insert(word);
         }
 
-        Self { builtin_trie }
-    }
-    /// Add external commands on $PATH to the trie for autocompletion, returning a vector of candidates matching the given prefix
-    ///
-    /// # Errors
-    /// - `CompletionError::PathNotSet` if the `PATH` environment variable is not set
-    pub fn get_external_candidates(
-        prefix: &str,
-        get_exec: bool,
-    ) -> Result<Option<Vec<String>>, CompletionError> {
-        let mut external_trie: TrieNode<TRIE_ASCII_SIZE> = TrieNode::new();
-
-        // add current directory files to trie
-        let current_dir_candidates = TrieCompleter::get_files_current_dir(prefix);
-        for candidate in current_dir_candidates {
-            external_trie.insert(&candidate);
-        }
-
-        // add executable files in path to trie
-        if get_exec {
-            let exec_files_candidates = TrieCompleter::get_path_exec(prefix)?;
-            for candidate in exec_files_candidates {
-                external_trie.insert(&candidate);
-            }
-        }
-
-        Ok(external_trie.auto_complete(prefix))
+        Self { builtin }
     }
 
     fn get_files_current_dir(prefix: &str) -> Vec<String> {
-        let mut candidates = Vec::new();
+        let mut candidates = vec![];
         if let Ok(current_dir) = std::env::current_dir() {
             let split = prefix.rsplitn(2, '/').collect::<Vec<_>>();
             let prefix = split[0];
@@ -68,18 +42,18 @@ impl TrieCompleter {
                         continue;
                     };
                     if name_str.starts_with(prefix) && file_path.exists() {
-                        if search_dir_str.is_empty() {
+                        let candidate = if search_dir_str.is_empty() {
                             if file_path.is_dir() {
-                                candidates.push(name_str.to_string() + "/");
-                                continue;
+                                name_str.to_string() + "/"
+                            } else {
+                                name_str.to_string()
                             }
-                            candidates.push(name_str.to_string());
-                            continue;
                         } else if file_path.is_dir() {
-                            candidates.push(search_dir_str.clone() + "/" + name_str + "/");
-                            continue;
-                        }
-                        candidates.push(search_dir_str.clone() + "/" + name_str);
+                            search_dir_str.clone() + "/" + name_str + "/"
+                        } else {
+                            search_dir_str.clone() + "/" + name_str
+                        };
+                        candidates.push(candidate);
                     }
                 }
             }
@@ -133,17 +107,17 @@ impl Completer for TrieCompleter {
         let prefix = line.split(' ').next_back().unwrap_or("");
 
         let ignore_builtins = prefix.is_empty() && !line.is_empty() && !line.starts_with("type");
+        let mut candidates = vec![];
 
-        let mut candidates = self.builtin_trie.auto_complete(prefix).unwrap_or(vec![]);
+        if !ignore_builtins {
+            candidates = self.builtin.auto_complete(prefix).unwrap_or(vec![]);
+        }
 
-        // TODO: only look for path execs and builtins if the line doesn't contain space
-        // except builtins if the line starts with type I guess
-        let mut external_candidates =
-            TrieCompleter::get_external_candidates(prefix, !line.contains(' '))
-                .map_err(rustyline::error::ReadlineError::from)?
-                .unwrap_or(vec![]);
+        if !line.contains(' ') {
+            candidates.append(&mut TrieCompleter::get_path_exec(prefix)?);
+        }
 
-        candidates.append(&mut external_candidates);
+        candidates.append(&mut TrieCompleter::get_files_current_dir(prefix));
 
         let idx = if line.chars().nth(pos - 1) == Some(' ') {
             pos
@@ -151,16 +125,13 @@ impl Completer for TrieCompleter {
             start_of_last_word(line, pos - 1)
         };
 
-        if ignore_builtins {
-            candidates.retain(|c| !BUILTIN_COMMANDS.contains(&c.as_str()));
-        }
-
         if candidates.len() == 1 {
             if !candidates[0].ends_with('/') {
                 candidates[0].push(' ');
             }
             return Ok((idx, candidates));
         }
+        candidates.sort();
         Ok((idx, candidates))
     }
 
