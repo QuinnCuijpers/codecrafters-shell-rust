@@ -22,5 +22,6 @@ pub(crate) fn invoke_builtin(
         Builtin::Pwd => Ok(Some(invoke_pwd(args)?)),
         Builtin::Cd => invoke_cd(args),
         Builtin::History => Ok(invoke_history(args, history)),
+        Builtin::Jobs => Ok(None),
     }
 }

@@ -9,7 +9,7 @@ use thiserror::Error;
 pub(crate) use invoke::invoke_builtin;
 
 /// Constant array of the names of the built-in commands, used for autocompletion and `type` command
-pub const BUILTIN_COMMANDS: [&str; 6] = ["echo", "exit", "type", "pwd", "cd", "history"];
+pub const BUILTIN_COMMANDS: [&str; 7] = ["echo", "exit", "type", "pwd", "cd", "history", "jobs"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Enum representing the commmands built into this shell
@@ -33,6 +33,8 @@ pub enum Builtin {
     /// - `history -w <file>` — write history
     /// - `history -a <file>` — append history
     History,
+    /// Command for interacting with jobs
+    Jobs,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -52,6 +54,7 @@ impl FromStr for Builtin {
             "pwd" => Ok(Builtin::Pwd),
             "cd" => Ok(Builtin::Cd),
             "history" => Ok(Builtin::History),
+            "jobs" => Ok(Builtin::Jobs),
             _ => Err(FromStrError::UnknownBuiltin(s.to_string())),
         }
     }
